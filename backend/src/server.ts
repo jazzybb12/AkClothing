@@ -1,6 +1,30 @@
 import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 import { createApp } from "@/app";
 import { env } from "@/config/env";
+
+// Some hosts (Hostinger's deploy packaging included) copy node_modules into the final
+// runtime location without preserving the executable bit on Prisma's native engine
+// binaries, causing EACCES when Prisma tries to spawn them. Restoring 0o755 here is a
+// no-op on platforms where the bit was already set, and harmless on Windows (chmod is
+// largely a no-op there too), so this is safe to run unconditionally on every boot.
+function restoreEngineExecutePermissions() {
+  const dirs = ["@prisma/engines", ".prisma/client"].map((d) => path.join(__dirname, "..", "node_modules", d));
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const file of fs.readdirSync(dir)) {
+      if (/engine|schema-engine|query_engine|libquery_engine/.test(file)) {
+        try {
+          fs.chmodSync(path.join(dir, file), 0o755);
+        } catch {
+          // best-effort — if this fails, the migrate step below will surface a clear error
+        }
+      }
+    }
+  }
+}
+restoreEngineExecutePermissions();
 
 // Applies pending migrations at process startup rather than during `npm install` —
 // some hosts (e.g. Hostinger's Node.js app deploy) only inject environment variables
