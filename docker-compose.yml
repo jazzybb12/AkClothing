@@ -27,7 +27,10 @@ services:
         condition: service_healthy
     ports:
       - "4000:4000"
-    command: sh -c "npx prisma migrate deploy && node dist/server.js"
+    # No separate migrate step here — server.ts runs `prisma migrate deploy` itself at
+    # startup (see comment there for why: some hosts only inject env vars at runtime,
+    # not during the image's build/install step).
+    command: node dist/server.js
 
   frontend:
     build: ./frontend
