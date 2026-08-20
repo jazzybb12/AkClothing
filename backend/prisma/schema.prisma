@@ -1,0 +1,346 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  STAFF
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum CourierProvider {
+  LEOPARDS
+  POSTEX
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+enum PaymentMethod {
+  COD
+  BANK_DEPOSIT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  role         Role     @default(CUSTOMER)
+  active       Boolean  @default(true)
+  // Meaningful only for STAFF — ADMIN always has full access regardless of this field.
+  // New STAFF accounts default to [] (least privilege); an ADMIN grants access explicitly
+  // via Admin > Team. See backend/src/constants/permissions.ts for the fixed key set.
+  // MySQL has no native array type, so this is stored as a JSON array of Permission keys
+  // (application code always reads/writes it as string[] — see middleware/auth.ts).
+  permissions  Json     @default("[]")
+  resetToken          String?   @unique
+  resetTokenExpiresAt DateTime?
+  orders       Order[]
+  reviews      Review[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id       String     @id @default(uuid())
+  name     String     @unique
+  slug     String     @unique
+  parentId String?
+  parent   Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToCategory")
+  products Product[]
+}
+
+model Product {
+  id             String           @id @default(uuid())
+  name           String
+  slug           String           @unique
+  description    String           @db.Text
+  basePrice      Decimal          @db.Decimal(10, 2)
+  categoryId     String
+  category       Category         @relation(fields: [categoryId], references: [id])
+  status         ProductStatus    @default(DRAFT)
+  // Curates the homepage "Best of the Bazaar" section — when any product is featured,
+  // that section shows only featured products; when none are, it falls back to the
+  // most recent ones (see getTrendingProducts in frontend/src/app/page.tsx).
+  featured       Boolean          @default(false)
+  seoTitle       String?
+  seoDescription String?          @db.Text
+  images         ProductImage[]
+  variants       ProductVariant[]
+  reviews        Review[]
+  collections    Collection[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+// An admin-curated group of products shown as its own homepage section and its own
+// browsable page (/collections/[slug]) — deliberately a manual product list (like Banners/
+// featured products elsewhere in this app) rather than a filter-rule engine, to stay
+// consistent with how curation already works everywhere else in this codebase.
+model Collection {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  imageUrl    String?
+  position    Int       @default(0)
+  active      Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model ProductVariant {
+  id            String      @id @default(uuid())
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size          String
+  color         String
+  sku           String      @unique
+  priceOverride Decimal?    @db.Decimal(10, 2)
+  stockQty      Int         @default(0)
+  isOutOfStock  Boolean     @default(false)
+  images        ProductImage[]
+  orderItems    OrderItem[]
+
+  @@unique([productId, size, color])
+}
+
+model ProductImage {
+  id        String          @id @default(uuid())
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  position  Int             @default(0)
+}
+
+model Coupon {
+  id             String     @id @default(uuid())
+  code           String     @unique
+  type           CouponType
+  value          Decimal    @db.Decimal(10, 2)
+  minOrderAmount Decimal    @default(0) @db.Decimal(10, 2)
+  usageLimit     Int?
+  usedCount      Int        @default(0)
+  expiresAt      DateTime?
+  active         Boolean    @default(true)
+  // Applies automatically to an eligible cart at checkout with no code entry — see
+  // findBestAutoApplyCoupon in coupons.service.ts. A manually-entered code (of any type,
+  // including one that also has autoApply: true) always takes precedence.
+  autoApply      Boolean    @default(false)
+  orders         Order[]
+  createdAt      DateTime   @default(now())
+}
+
+model Order {
+  id                    String           @id @default(uuid())
+  orderNumber           String           @unique
+  userId                String?
+  user                  User?            @relation(fields: [userId], references: [id])
+  customerName          String
+  customerPhone         String
+  customerEmail         String?
+  shippingAddress       Json
+  subtotal              Decimal          @db.Decimal(10, 2)
+  discountAmount        Decimal          @default(0) @db.Decimal(10, 2)
+  shippingFee           Decimal          @default(0) @db.Decimal(10, 2)
+  // Nullable: orders placed before shipping methods existed have no method on file, just
+  // the flat shippingFee. shippingMethodName is a snapshot (like productNameSnapshot) so
+  // renaming/deleting a method later doesn't change what a past order displays.
+  shippingMethodId      String?
+  shippingMethod        ShippingMethod?  @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  shippingMethodName    String?
+  paymentMethod         PaymentMethod    @default(COD)
+  total                 Decimal          @db.Decimal(10, 2)
+  couponId              String?
+  coupon                Coupon?          @relation(fields: [couponId], references: [id])
+  status                OrderStatus      @default(PENDING)
+  courierProvider       CourierProvider?
+  courierTrackingNumber String?
+  courierStatus         String?
+  items                 OrderItem[]
+  createdAt             DateTime         @default(now())
+  updatedAt              DateTime        @updatedAt
+}
+
+// Admin-managed shipping options offered at checkout (e.g. "Standard", "Express"), each
+// with its own flat fee. Replaces the old single flat Settings.shippingFee, which is kept
+// only as a last-resort fallback for the (should-never-happen post-seed) case of zero
+// active methods configured.
+model ShippingMethod {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  fee         Decimal  @default(0) @db.Decimal(10, 2)
+  active      Boolean  @default(true)
+  position    Int      @default(0)
+  orders      Order[]
+  createdAt   DateTime @default(now())
+}
+
+model OrderItem {
+  id                  String         @id @default(uuid())
+  orderId             String
+  order               Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId           String
+  variantId           String
+  variant             ProductVariant @relation(fields: [variantId], references: [id])
+  productNameSnapshot String
+  size                String
+  color               String
+  qty                 Int
+  unitPrice           Decimal        @db.Decimal(10, 2)
+  lineTotal           Decimal        @db.Decimal(10, 2)
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int
+  comment    String   @db.Text
+  // Set only for reviews an admin writes on a customer's behalf (storefront display uses
+  // this in place of user.name) — lets the store owner seed several reviews under one
+  // admin account without them all colliding as "the same reviewer". Null for genuine
+  // customer-submitted reviews, where user.name is always shown.
+  authorName String?
+  // Curates the homepage reviews marquee — when any review has this set, the marquee
+  // shows only those; when none do, it falls back to the highest-rated reviews site-wide
+  // (same fallback pattern as Product.featured/ShippingMethod, etc.).
+  showOnHomepage Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Not @@unique([productId, userId]) anymore — that would cap an admin account to one
+  // seeded review per product. One-review-per-customer-per-product is now enforced in
+  // application code (reviews.routes.ts), scoped to authorName IS NULL rows only.
+  @@index([productId, userId])
+}
+
+// A homepage hero slide. imageUrl is an admin-uploaded photo (rendered full-bleed with a
+// dark overlay for text legibility); when absent, gradientKey selects a preset gradient
+// background instead, so a banner still looks intentional with no image uploaded yet.
+model Banner {
+  id          String   @id @default(uuid())
+  eyebrow     String?
+  heading     String
+  subtext     String?  @db.Text
+  ctaLabel    String?
+  ctaHref     String?  @db.VarChar(255)
+  imageUrl    String?
+  gradientKey String   @default("brand")
+  position    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Settings {
+  id                String           @id @default("singleton")
+  logoUrl           String?
+  faviconUrl        String?
+  brandColor        String?
+  accentColor       String?
+  whatsappNumber    String?
+  defaultCourier    CourierProvider?
+  storeName         String?
+  storeContactEmail String?
+  storeContactPhone String?
+  // Last-resort fallback fee, only used if zero ShippingMethod rows are active.
+  shippingFee       Decimal          @default(0) @db.Decimal(10, 2)
+  codEnabled        Boolean          @default(true)
+  bankDepositEnabled     Boolean     @default(false)
+  // Free-text (bank name / account title / account number / IBAN / any instructions) —
+  // shown to the customer at checkout and on the order confirmation when they pick Bank
+  // Deposit. Deliberately not split into rigid fields so it can fit however many banks
+  // the store actually uses.
+  bankDepositInstructions String?          @db.Text
+
+  // Homepage section title overrides — null falls back to the original hardcoded copy
+  // (see frontend/src/app/page.tsx / PopularCategories.tsx), so this is zero-visual-change
+  // out of the box until an admin actually edits a section.
+  occasionEyebrow String?
+  occasionHeading String?
+  bazaarEyebrow   String?
+  bazaarHeading   String?
+  // How many products the "Best of the Bazaar" section shows. Null falls back to 8.
+  bazaarLimit     Int?
+  collectionsEyebrow String?
+  collectionsHeading String?
+  reviewsEyebrow     String?
+  reviewsHeading     String?
+}
+
+enum TrafficChannel {
+  DIRECT
+  ORGANIC
+  SOCIAL
+  REFERRAL
+  EMAIL
+}
+
+model PageView {
+  id        String         @id @default(uuid())
+  path      String         @db.VarChar(500)
+  sessionId String
+  referrer  String?        @db.Text
+  channel   TrafficChannel
+  createdAt DateTime       @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+enum EmailTemplateKey {
+  ORDER_CONFIRMATION
+  STATUS_CONFIRMED
+  STATUS_SHIPPED
+  STATUS_DELIVERED
+  STATUS_CANCELLED
+}
+
+// An admin-edited override for one of order-emails.ts's DEFAULT_TEMPLATES. Absent (no row
+// for a key) means "use the hardcoded default" — see email-templates.service.ts's
+// getTemplate, same null-fallback pattern as Settings/branding.
+model EmailTemplate {
+  id        String           @id @default(uuid())
+  key       EmailTemplateKey @unique
+  subject   String           @db.Text
+  body      String           @db.Text
+  updatedAt DateTime         @updatedAt
+}
