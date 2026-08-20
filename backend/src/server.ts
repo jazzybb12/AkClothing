@@ -7,7 +7,11 @@ import { env } from "@/config/env";
 // (DATABASE_URL etc.) into the running process, not into the build/install step, so a
 // migrate step in package.json's postinstall can't reach the real database yet.
 try {
-  execSync("npx prisma migrate deploy", { encoding: "utf-8" });
+  // Invoke Prisma's CLI entry point directly via `node <path>` rather than `npx prisma` —
+  // some hosts (Hostinger's runtime included) don't have `npx` on PATH for the process
+  // that actually runs the app, even though it's available during the build step.
+  const prismaCli = require.resolve("prisma/build/index.js");
+  execSync(`node "${prismaCli}" migrate deploy`, { encoding: "utf-8" });
 } catch (err) {
   // stdio defaults to "pipe" here (not "inherit") specifically so the real Prisma error
   // text ends up on err.stdout/err.stderr, where the host's log viewer actually captures
