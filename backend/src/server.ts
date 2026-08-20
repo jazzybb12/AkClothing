@@ -7,9 +7,16 @@ import { env } from "@/config/env";
 // (DATABASE_URL etc.) into the running process, not into the build/install step, so a
 // migrate step in package.json's postinstall can't reach the real database yet.
 try {
-  execSync("npx prisma migrate deploy", { stdio: "inherit" });
+  execSync("npx prisma migrate deploy", { encoding: "utf-8" });
 } catch (err) {
-  console.error("Prisma migrate deploy failed:", err);
+  // stdio defaults to "pipe" here (not "inherit") specifically so the real Prisma error
+  // text ends up on err.stdout/err.stderr, where the host's log viewer actually captures
+  // it — "inherit" writes straight to the OS stream and gets lost in some hosts' logs.
+  const e = err as { stdout?: string; stderr?: string; message?: string };
+  console.error("Prisma migrate deploy failed.");
+  if (e.stdout) console.error("stdout:", e.stdout);
+  if (e.stderr) console.error("stderr:", e.stderr);
+  if (!e.stdout && !e.stderr) console.error(e.message ?? err);
   process.exit(1);
 }
 
