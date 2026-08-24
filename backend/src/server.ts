@@ -65,30 +65,57 @@ function restoreEngineExecutePermissions() {
     }
   }
 }
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function logMigrateFailure(err: unknown) {
+  // stdio defaults to "pipe" here (not "inherit") specifically so the real Prisma error
+  // text ends up on err.stdout/err.stderr, where the host's log viewer actually captures
+  // it — "inherit" writes straight to the OS stream and gets lost in some hosts' logs.
+  const e = err as { stdout?: string; stderr?: string; message?: string };
+  console.error("Prisma migrate deploy failed.");
+  if (e.stdout) console.error("stdout:", e.stdout);
+  if (e.stderr) console.error("stderr:", e.stderr);
+  if (!e.stdout && !e.stderr) console.error(e.message ?? err);
+}
+
+// Applies pending migrations at process startup rather than during `npm install` —
+// some hosts (e.g. Hostinger's Node.js app deploy) only inject environment variables
+// (DATABASE_URL etc.) into the running process, not into the build/install step, so a
+// migrate step in package.json's postinstall can't reach the real database yet.
+//
+// Retries with backoff (in-process, not a fresh restart) rather than failing fast: a
+// tight crash-restart loop was observed to spawn the schema-engine binary so rapidly it
+// exhausted the host's process resources (EAGAIN spawning the engine itself) — retrying
+// within the same process, spaced out, gives transient resource pressure a real chance
+// to clear instead of making it worse.
+async function runMigrations() {
+  const prismaCli = require.resolve("prisma/build/index.js");
+  const delaysMs = [3000, 6000, 12000, 24000, 48000];
+  for (let attempt = 0; attempt <= delaysMs.length; attempt++) {
+    try {
+      execSync(`"${process.execPath}" "${prismaCli}" migrate deploy`, { encoding: "utf-8" });
+      return;
+    } catch (err) {
+      logMigrateFailure(err);
+      if (attempt === delaysMs.length) throw err;
+      const delay = delaysMs[attempt];
+      console.error(`Retrying migration in ${delay / 1000}s (attempt ${attempt + 2}/${delaysMs.length + 1})...`);
+      await sleep(delay);
+    }
+  }
+}
+
 async function main() {
   restoreEngineExecutePermissions();
   await probeDatabaseTcp();
 
-  // Applies pending migrations at process startup rather than during `npm install` —
-  // some hosts (e.g. Hostinger's Node.js app deploy) only inject environment variables
-  // (DATABASE_URL etc.) into the running process, not into the build/install step, so a
-  // migrate step in package.json's postinstall can't reach the real database yet.
   try {
-    // Invoke Prisma's CLI entry point directly, using process.execPath (the absolute path
-    // to the currently-running node binary) rather than the bare "node" or "npx" commands —
-    // Hostinger's runtime spawns execSync's subshell with a PATH that doesn't even resolve
-    // "node" by name, even though the app itself is obviously running under Node.
-    const prismaCli = require.resolve("prisma/build/index.js");
-    execSync(`"${process.execPath}" "${prismaCli}" migrate deploy`, { encoding: "utf-8" });
-  } catch (err) {
-    // stdio defaults to "pipe" here (not "inherit") specifically so the real Prisma error
-    // text ends up on err.stdout/err.stderr, where the host's log viewer actually captures
-    // it — "inherit" writes straight to the OS stream and gets lost in some hosts' logs.
-    const e = err as { stdout?: string; stderr?: string; message?: string };
-    console.error("Prisma migrate deploy failed.");
-    if (e.stdout) console.error("stdout:", e.stdout);
-    if (e.stderr) console.error("stderr:", e.stderr);
-    if (!e.stdout && !e.stderr) console.error(e.message ?? err);
+    await runMigrations();
+  } catch {
+    console.error("Migrations failed after all retries — exiting.");
+    // A final pause before exit throttles the platform's own restart loop too, in case
+    // it also restarts faster than the environment can recover from.
+    await sleep(15000);
     process.exit(1);
   }
 
