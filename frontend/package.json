@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node -e \"const fs=require('fs');const copy=(s,d)=>fs.existsSync(s)&&fs.cpSync(s,d,{recursive:true});copy('public','.next/standalone/public');copy('.next/static','.next/standalone/.next/static')\"",
     "start": "next start",
     "lint": "next lint"
   },
