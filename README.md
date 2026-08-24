@@ -88,34 +88,50 @@ one for `backend/`.
    hPanel settings instead (see step 4).
 2. **Create the MySQL database** (already done in hPanel → Databases → MySQL Databases,
    per this project's setup) and note its host, database name, username, and password —
-   the deploy wizard's database section shows these, or hPanel → Databases → Management.
-3. **Deploy the backend app**: in the wizard, point it at this repo with `backend/` as
+   check hPanel → Databases → Remote MySQL for the actual server hostname/IP (it is
+   **not** the same as your site's domain — using the domain as the DB host produces a
+   connection timeout). If the app's user gets `P1000: Authentication failed` even with
+   correct-looking credentials, grant it broad host access directly via phpMyAdmin's SQL
+   tab: `GRANT ALL PRIVILEGES ON <db>.* TO '<user>'@'%' IDENTIFIED BY '<password>'; FLUSH
+   PRIVILEGES;` — panel-created users are sometimes scoped to a host pattern that doesn't
+   match where the Node app hosting actually connects from.
+3. **Apply the database schema manually, from your own machine — not as part of the
+   deploy.** Hostinger's Node.js hosting was found to be unable to reliably spawn
+   Prisma's schema-engine subprocess (OS-level spawn failures, `EAGAIN`, even with long
+   retries) — `postinstall`/app-boot deliberately do **not** run `prisma migrate deploy`
+   for this reason (see the comment above `restoreEngineExecutePermissions` in
+   `server.ts`). Instead, whenever the schema changes: point `DATABASE_URL` at the
+   production database from your local `backend/.env` (temporarily) and run
+   `npx prisma migrate deploy` locally. `@prisma/client`'s query engine used for normal
+   request handling runs in-process (no subprocess spawn), so this limitation doesn't
+   affect the running app itself — only the one-off migration step.
+4. **Deploy the backend app**: in the wizard, point it at this repo with `backend/` as
    the app root, build command `npm install && npm run build`, start command
-   `npx prisma migrate deploy && node dist/server.js`.
-4. **Set backend environment variables** in that app's settings (mirroring
-   `backend/.env.example`): `DATABASE_URL` (built from the MySQL credentials from step 2,
-   e.g. `mysql://user:pass@host:3306/dbname`), fresh `JWT_ACCESS_SECRET`/
+   `node dist/server.js`.
+5. **Set backend environment variables** in that app's settings (mirroring
+   `backend/.env.example`): `DATABASE_URL` (from step 2), fresh `JWT_ACCESS_SECRET`/
    `JWT_REFRESH_SECRET` (`openssl rand -base64 48`, don't reuse dev ones), your real
    Cloudinary keys, `CORS_ORIGIN=https://your-domain.com`, and the rest from the example
-   file. Run `npm run seed` **once** afterward (via the app's shell/SSH access, if
-   offered) on the fresh empty database only — it wipes and reseeds, so never repeat it.
-5. **Deploy the frontend app**: point it at `frontend/` as the app root, build command
+   file. Run `npm run seed` **once** (from your local machine, pointed at the production
+   `DATABASE_URL`, same as step 3) on the fresh empty database only — it wipes and
+   reseeds, so never repeat it.
+6. **Deploy the frontend app**: point it at `frontend/` as the app root, build command
    `npm install && npm run build`, start command `node server.js` (the standalone
    output — see `next.config.mjs`'s `output: "standalone"`).
-6. **Set frontend environment variables**: `NEXT_PUBLIC_API_URL=https://your-domain.com/api`,
+7. **Set frontend environment variables**: `NEXT_PUBLIC_API_URL=https://your-domain.com/api`,
    `NEXT_PUBLIC_SITE_URL=https://your-domain.com`, `NEXT_PUBLIC_WHATSAPP_NUMBER`.
-7. **Point your domain** at whichever URL/path structure the deploy wizard assigns
+8. **Point your domain** at whichever URL/path structure the deploy wizard assigns
    (usually it wires the domain automatically, or you connect it under Domains — the
    wizard's UI clarifies this per-app). SSL is normally handled automatically by
    Hostinger for domains on their own hosting (AutoSSL/Let's Encrypt via hPanel), unlike
    the manual certbot dance the VPS path below needs.
-8. Log into `/admin/login` with the seeded admin credentials and **change the password
+9. Log into `/admin/login` with the seeded admin credentials and **change the password
    immediately**.
 
 ## Deploying to a VPS (Ubuntu + Docker + Nginx) — alternative, not the current plan
 
 Target: **Hostinger VPS** (KVM plan — shared/web hosting won't work here since this app
-needs Docker + a persistent Postgres process, not just PHP file hosting). Any other
+needs Docker + a persistent MySQL process, not just PHP file hosting). Any other
 Ubuntu VPS provider works identically.
 
 1. In hPanel, create a VPS and pick the **"Ubuntu 22.04 with Docker"** OS template (skips
