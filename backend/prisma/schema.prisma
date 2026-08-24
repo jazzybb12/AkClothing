@@ -1,5 +1,12 @@
 generator client {
   provider = "prisma-client-js"
+  // Hostinger's build step and runtime step appear to use different container images —
+  // "native" alone (auto-detected at `npm run build` time) picked an engine binary linked
+  // against an OpenSSL version the actual runtime container doesn't have, which manifests
+  // as a generic P1001 "can't reach" even though raw TCP to the DB is provably fine (see
+  // the TCP probe in server.ts). Bundling every common Debian OpenSSL target sidesteps
+  // having to know which one is actually correct.
+  binaryTargets = ["native", "debian-openssl-1.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
