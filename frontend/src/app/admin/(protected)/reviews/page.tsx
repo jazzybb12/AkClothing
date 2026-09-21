@@ -5,8 +5,10 @@ import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 import StarRating from "@/components/StarRating";
+import { uploadImage } from "@/lib/cloudinary";
 
 interface AdminReview {
+  photoUrl?: string | null;
   id: string;
   rating: number;
   comment: string;
@@ -150,6 +152,14 @@ export default function AdminReviewsPage() {
         <div className="space-y-4">
           {reviews.map((r) => (
             <div key={r.id} className="rang-card p-4">
+              <label className="mb-3 block text-sm">Customer photo (use with their permission)
+                <input type="file" accept="image/*" onChange={async e => {
+                  const file=e.target.files?.[0]; if(!file||!token)return;
+                  try { const photoUrl=await uploadImage(file,token); await apiFetch(`/admin/reviews/${r.id}`,{method:"PATCH",token,body:JSON.stringify({photoUrl})}); await load(); }
+                  catch { setError("Could not upload review photo. Check Cloudinary settings."); }
+                }} />
+              </label>
+              {r.photoUrl && <div className="mb-3 flex items-center gap-3"><img src={r.photoUrl} alt="Customer review" className="h-14 w-14 rounded object-cover" /><button onClick={async()=>{try{await apiFetch(`/admin/reviews/${r.id}`,{method:"PATCH",token:token??undefined,body:JSON.stringify({photoUrl:null})});await load();}catch{setError("Could not remove photo.");}}}>Remove photo</button></div>}
               <div className="flex items-start justify-between">
                 <div>
                   <Link href={`/product/${r.product.slug}`} target="_blank" className="font-semibold transition-colors hover:text-brand">

@@ -111,6 +111,7 @@ export default function ProtectedAdminLayout({ children }: { children: React.Rea
       <div className="sticky top-0 z-30 flex items-center justify-between border-b-2 border-ink/15 bg-surface/90 p-4 backdrop-blur-sm md:hidden">
         <BrandMark size={42} fallback={<p className="font-display text-lg font-semibold text-brand">ak.shop Admin</p>} />
         <div className="flex items-center gap-1">
+          <button type="button" onClick={() => logout().then(() => router.replace("/admin/login"))} className="rounded-lg border border-ink/20 px-3 py-2 text-sm font-medium text-ink hover:bg-ink/5">Sign out</button>
           <ThemeToggle />
           <button
             aria-label="Toggle admin menu"
@@ -139,7 +140,7 @@ export default function ProtectedAdminLayout({ children }: { children: React.Rea
         </div>
       )}
 
-      <aside className="hidden w-60 shrink-0 border-r-2 border-ink/15 bg-surface p-4 md:flex md:flex-col">
+      <aside className="hidden w-60 shrink-0 border-r-2 border-ink/15 bg-surface p-4 md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
         <div className="mb-6 flex items-center justify-between px-2">
           <BrandMark size={48} fallback={<p className="font-display text-lg font-semibold text-brand">ak.shop Admin</p>} />
           <ThemeToggle />
@@ -155,7 +156,13 @@ export default function ProtectedAdminLayout({ children }: { children: React.Rea
           Log out
         </button>
       </aside>
-      <main className="min-w-0 flex-1 p-4 sm:p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-4 sm:p-8">
+        <div className="mb-6 hidden items-center justify-end gap-4 border-b border-ink/15 pb-4 md:flex">
+          <span className="text-sm text-ink-soft">{user.name}</span>
+          <button type="button" onClick={() => logout().then(() => router.replace("/admin/login"))} className="rounded-lg border border-ink/20 bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:bg-ink/5">Sign out</button>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }

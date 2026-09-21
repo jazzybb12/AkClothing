@@ -66,6 +66,8 @@ model User {
   permissions  Json     @default("[]")
   resetToken          String?   @unique
   resetTokenExpiresAt DateTime?
+  resetCodeAttempts   Int @default(0)
+  resetCodeSentAt     DateTime?
   orders       Order[]
   reviews      Review[]
   createdAt    DateTime @default(now())
@@ -228,6 +230,7 @@ model OrderItem {
 }
 
 model Review {
+  photoUrl String?
   id         String   @id @default(uuid())
   productId  String
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -257,6 +260,10 @@ model Review {
 // dark overlay for text legibility); when absent, gradientKey selects a preset gradient
 // background instead, so a banner still looks intentional with no image uploaded yet.
 model Banner {
+  height      Int?
+  imagePosition Int @default(50)
+  imageRotation Int @default(0)
+  accentColor String? @db.VarChar(7)
   id          String   @id @default(uuid())
   eyebrow     String?
   heading     String
@@ -278,6 +285,7 @@ model NewsletterSubscriber {
 }
 
 model Settings {
+  announcementText String? @db.VarChar(240)
   id                String           @id @default("singleton")
   logoUrl           String?
   faviconUrl        String?

@@ -10,6 +10,7 @@ import {
   registerUser,
   requestPasswordReset,
   resetPassword,
+  resetPasswordWithCode,
   updateOwnAccount,
 } from "./auth.service";
 
@@ -80,7 +81,7 @@ router.post("/logout", (_req, res) => {
   res.status(204).send();
 });
 
-const forgotPasswordSchema = z.object({ email: z.string().email() });
+const forgotPasswordSchema = z.object({ email: z.string().trim().email() });
 
 // POST /api/auth/forgot-password — always responds the same way regardless of whether
 // the email exists, so this endpoint can't be used to enumerate accounts.
@@ -89,7 +90,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { email } = forgotPasswordSchema.parse(req.body);
     await requestPasswordReset(email);
-    res.json({ message: "If an account exists for that email, a reset link has been sent." });
+    res.json({ message: "If an active account exists for that email, a reset code will arrive shortly." });
   })
 );
 
@@ -97,6 +98,14 @@ const resetPasswordSchema = z.object({
   token: z.string().min(1),
   password: passwordSchema,
 });
+
+router.post("/reset-password-code", asyncHandler(async (req, res) => {
+  const { email, code, password } = z.object({
+    email: z.string().trim().email(), code: z.string().regex(/^\d{6}$/, "Enter the six-digit code"), password: passwordSchema.max(72),
+  }).parse(req.body);
+  await resetPasswordWithCode(email, code, password);
+  res.json({ message: "Password reset. You can now sign in." });
+}));
 
 router.post(
   "/reset-password",

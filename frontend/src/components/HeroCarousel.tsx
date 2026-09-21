@@ -1,85 +1,21 @@
 "use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Banner, BannerGradientKey } from "@/lib/types";
-
-const GRADIENT_CLASSES: Record<BannerGradientKey, string> = {
-  brand: "from-brand-dark via-brand to-plum",
-  emerald: "from-jade via-brand to-plum",
-  accent: "from-accent-dark via-accent to-brand",
-};
-
-export default function HeroCarousel({ banners }: { banners: Banner[] }) {
-  const [active, setActive] = useState(0);
-
-  useEffect(() => {
-    if (banners.length < 2) return;
-    const timer = setInterval(() => {
-      setActive((i) => (i + 1) % banners.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [banners.length]);
-
-  if (banners.length === 0) return null;
-
-  const slide = banners[active % banners.length];
-  const hasImage = !!slide.imageUrl;
-
-  return (
-    <section
-      className={`font-rang relative overflow-hidden rounded-[22px] border-2 border-ink px-8 py-20 text-center text-white transition-colors duration-700 sm:py-28 ${
-        hasImage ? "bg-ink" : `bg-gradient-to-br ${GRADIENT_CLASSES[slide.gradientKey]}`
-      }`}
-    >
-      {hasImage && (
-        <>
-          <Image
-            src={slide.imageUrl!}
-            alt=""
-            fill
-            priority
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
-        </>
-      )}
-      {!hasImage && (
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.15]"
-          style={{
-            backgroundImage: "repeating-radial-gradient(circle at 15% 20%, rgba(255,255,255,.6) 0 3px, transparent 3px 30px)",
-          }}
-        />
-      )}
-      <div key={active} className="relative animate-fade-in">
-        {slide.eyebrow && (
-          <span className="rang-eyebrow mb-2 inline-block">✦ {slide.eyebrow}</span>
-        )}
-        <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-bold sm:text-5xl">{slide.heading}</h1>
-        {slide.subtext && <p className="mx-auto mt-4 max-w-xl text-white/85">{slide.subtext}</p>}
-        {slide.ctaLabel && slide.ctaHref && (
-          <Link href={slide.ctaHref} className="rang-btn-accent mt-8 inline-flex">
-            {slide.ctaLabel}
-          </Link>
-        )}
-      </div>
-
-      {banners.length > 1 && (
-        <div className="relative mt-10 flex items-center justify-center gap-2">
-          {banners.map((b, i) => (
-            <button
-              key={b.id}
-              aria-label={`Go to slide ${i + 1}`}
-              onClick={() => setActive(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === active ? "w-6 bg-white" : "w-1.5 bg-white/40 hover:bg-white/60"
-              }`}
-            />
-          ))}
-        </div>
-      )}
-    </section>
-  );
+import { Banner } from "@/lib/types";
+const fallback: Banner = { id:"dune-introduction", eyebrow:"THE MODERN HERITAGE EDIT", heading:"Rooted in warmth.", subtext:"Earth-toned stories, flowing silhouettes, and a little everyday ceremony. Dress at your own pace.", ctaLabel:"Explore the collection", ctaHref:"/shop", imageUrl:null, gradientKey:"brand",position:0,active:true };
+export default function HeroCarousel({banners, showFallback = false}: {banners:Banner[];showFallback?:boolean}) {
+ const [active,setActive]=useState(0); const [paused,setPaused]=useState(false); const [reduced,setReduced]=useState(true);
+ useEffect(()=>{const media=matchMedia("(prefers-reduced-motion: reduce)");const update=()=>setReduced(media.matches);update();media.addEventListener("change",update);return()=>media.removeEventListener("change",update);},[]);
+ useEffect(()=>{if(banners.length<2||paused||reduced)return;const timer=setInterval(()=>setActive(i=>(i+1)%banners.length),5000);return()=>clearInterval(timer);},[banners.length,paused,reduced]);
+ const slides=banners.length?banners:showFallback?[fallback]:[];if(!slides.length)return null;const slide=slides[active%slides.length];
+ return <section className="dune-hero" style={{minHeight:slide.height??560}} aria-label="Featured collections">
+  <div className="dune-stage" style={{backgroundColor:slide.accentColor??undefined}}>
+   {slide.imageUrl?<Image src={slide.imageUrl} alt="" fill priority sizes="(max-width: 760px) 100vw, 50vw" style={{objectFit:"cover",objectPosition:`${slide.imagePosition??50}% center`,transform:`perspective(900px) rotateY(${slide.imageRotation??0}deg) scale(${slide.imageRotation?1.2:1})`}}/>:<><div className="dune-orb"/><Image src="/concepts/dune-garment.svg" alt="Illustrated everyday shirt" fill priority className="dune-garment" style={{objectFit:"contain",transform:`perspective(900px) rotateY(${slide.imageRotation??-12}deg) rotate(-7deg)`}}/><span className="dune-art-label">FORM / FABRIC / FEELING</span></>}
+  </div>
+  <div className="dune-hero-copy"><p className="rang-section-tag">{slide.eyebrow}</p><h1>{slide.heading}</h1>{slide.subtext&&<p className="dune-description">{slide.subtext}</p>}{slide.ctaLabel&&slide.ctaHref&&<Link className="rang-btn-primary" href={slide.ctaHref}>{slide.ctaLabel}<span aria-hidden="true"> ↗</span></Link>}
+   <div className="dune-edition">AK.SHOP <span>TEXTURE &amp; TRADITION</span></div>
+   {slides.length>1&&<div className="dune-slide-controls">{slides.map((b,i)=><button key={b.id} aria-label={`Show banner ${i+1}`} aria-pressed={active%slides.length===i} onClick={()=>setActive(i)}>{String(i+1).padStart(2,"0")}</button>)}</div>}
+  </div>
+ </section>;
 }

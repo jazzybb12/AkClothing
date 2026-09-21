@@ -1,0 +1,3 @@
+ALTER TABLE `User`
+  ADD COLUMN `resetCodeAttempts` INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN `resetCodeSentAt` DATETIME(3) NULL;

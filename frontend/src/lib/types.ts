@@ -24,6 +24,10 @@ export interface Category {
 export type BannerGradientKey = "brand" | "emerald" | "accent";
 
 export interface Banner {
+  height?: number | null;
+  imagePosition?: number;
+  imageRotation?: number;
+  accentColor?: string | null;
   id: string;
   eyebrow: string | null;
   heading: string;
@@ -54,6 +58,7 @@ export interface Product {
 }
 
 export interface Review {
+  photoUrl?: string | null;
   id: string;
   productId: string;
   userId: string;

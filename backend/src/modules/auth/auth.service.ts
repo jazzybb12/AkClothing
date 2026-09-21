@@ -6,7 +6,11 @@ import { env } from "@/config/env";
 import { sendEmail } from "@/utils/email";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "./jwt";
 
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const RESET_TOKEN_TTL_MS = 10 * 60 * 1000;
+
+function codeHash(userId: string, code: string) {
+  return "code:" + crypto.createHmac("sha256", env.jwtAccessSecret).update(`${userId}:${code}`).digest("hex");
+}
 
 export async function registerUser(name: string, email: string, password: string, phone?: string) {
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -54,37 +58,62 @@ export async function refreshTokens(refreshToken: string) {
 // email exists) — this function is where the actual work happens, silently no-op'ing for
 // unknown emails so the API response can't be used to enumerate accounts.
 export async function requestPasswordReset(email: string) {
+  if (env.nodeEnv === "production" && !env.resend.apiKey) {
+    throw new AppError(503, "Password reset email is temporarily unavailable. Please try again later.");
+  }
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.active) return;
-
-  const token = crypto.randomBytes(32).toString("hex");
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { resetToken: token, resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
+  const now = new Date();
+  const code = crypto.randomInt(100000, 1000000).toString();
+  const token = codeHash(user.id, code);
+  const updated = await prisma.user.updateMany({
+    where: { id: user.id, active: true, OR: [{ resetCodeSentAt: null }, { resetCodeSentAt: { lte: new Date(now.getTime() - 60000) } }] },
+    data: { resetToken: token, resetTokenExpiresAt: new Date(now.getTime() + RESET_TOKEN_TTL_MS), resetCodeAttempts: 0, resetCodeSentAt: now },
   });
-
-  const resetUrl = `${env.frontendUrl}/reset-password?token=${token}`;
-  await sendEmail(
+  if (!updated.count) return;
+  try { await sendEmail(
     user.email,
-    "Reset your ak.shop password",
-    `<p>Hi ${user.name},</p>
-     <p>Click the link below to set a new password. This link expires in 1 hour and can only be used once.</p>
-     <p><a href="${resetUrl}">${resetUrl}</a></p>
-     <p>If you didn't request this, you can safely ignore this email.</p>`
-  );
+    "Your ak.shop password reset code",
+    `<p>Your password reset code is:</p><p style="font-size:32px;letter-spacing:6px"><strong>${code}</strong></p>
+     <p>Enter this code on the password reset page. It expires in 10 minutes and can be used once.</p>
+     <p>If you did not request this, ignore this email. Do not share the code.</p>`,
+    { requireDelivery: true }
+  ); } catch {
+    await prisma.user.updateMany({ where: { id: user.id, resetToken: token }, data: { resetToken: null, resetTokenExpiresAt: null, resetCodeSentAt: null } });
+    // Keep the response identical to unknown accounts; log no email, code or token.
+    console.error("Password reset email delivery failed.");
+  }
+}
+
+export async function resetPasswordWithCode(email: string, code: string, newPassword: string) {
+  const invalid = () => new AppError(400, "Invalid or expired code. Request a new code and try again.");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.active || !user.resetToken?.startsWith("code:")) throw invalid();
+  if (user.resetCodeAttempts >= 5) throw new AppError(400, "This code has reached its attempt limit. Select Resend code and use the newest email.");
+  const eligible = { id: user.id, active: true, resetToken: user.resetToken, resetTokenExpiresAt: { gt: new Date() }, resetCodeAttempts: { lt: 5 } };
+  // Atomically reserve an attempt so parallel requests cannot bypass the limit.
+  const attempt = await prisma.user.updateMany({ where: eligible, data: { resetCodeAttempts: { increment: 1 } } });
+  if (!attempt.count || !crypto.timingSafeEqual(Buffer.from(codeHash(user.id, code)), Buffer.from(user.resetToken))) throw invalid();
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const changed = await prisma.user.updateMany({
+    where: { id: user.id, active: true, resetToken: user.resetToken, resetTokenExpiresAt: { gt: new Date() } },
+    data: { passwordHash, resetToken: null, resetTokenExpiresAt: null, resetCodeAttempts: 0 },
+  });
+  if (!changed.count) throw invalid();
 }
 
 export async function resetPassword(token: string, newPassword: string) {
   const user = await prisma.user.findUnique({ where: { resetToken: token } });
-  if (!user || !user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
+  if (!user || !user.active || token.startsWith("code:") || !user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
     throw new AppError(400, "This reset link is invalid or has expired");
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({
-    where: { id: user.id },
+  const changed = await prisma.user.updateMany({
+    where: { id: user.id, active: true, resetToken: token, resetTokenExpiresAt: { gt: new Date() } },
     data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
   });
+  if (!changed.count) throw new AppError(400, "This reset link is invalid or has expired");
 }
 
 // Self-service profile update (name/email/password) — always requires the current

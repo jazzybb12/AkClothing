@@ -9,6 +9,7 @@ import { useWishlist } from "@/lib/WishlistContext";
 import { useCustomerAuth } from "@/lib/CustomerAuthContext";
 import { Category } from "@/lib/types";
 import ThemeToggle from "@/components/ThemeToggle";
+import Announcement from "@/components/Announcement";
 
 interface Props {
   categories: Category[];
@@ -77,21 +78,8 @@ export default function Header({ categories, logoUrl }: Props) {
 
   return (
     <header className="font-rang sticky top-0 z-40 border-b-[3px] border-ink bg-paper">
-      <div className="overflow-hidden whitespace-nowrap bg-ink py-1.5 text-xs font-bold tracking-wide text-paper">
-        <div className="ribbon-track inline-flex w-max gap-10">
-          {[...Array(2)].map((_, i) => (
-            <span key={i} className="inline-flex gap-10 pl-10">
-              <span>CASH ON DELIVERY, NATIONWIDE <span className="text-accent">✦</span></span>
-              <span>ORDER ON WHATSAPP <span className="text-accent">✦</span></span>
-              <span>DELIVERED BY LEOPARDS &amp; POSTEX <span className="text-accent">✦</span></span>
-              <span>CASH ON DELIVERY, NATIONWIDE <span className="text-accent">✦</span></span>
-              <span>ORDER ON WHATSAPP <span className="text-accent">✦</span></span>
-              <span>DELIVERED BY LEOPARDS &amp; POSTEX <span className="text-accent">✦</span></span>
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <Announcement />
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-4">
         <Link href="/" className="flex items-center gap-1.5 font-display text-2xl font-bold tracking-tight text-ink transition hover:opacity-80">
           {logoUrl ? (
             <Image src={logoUrl} alt="ak.shop" width={68} height={68} className="rounded object-contain" />
@@ -102,57 +90,21 @@ export default function Header({ categories, logoUrl }: Props) {
           )}
         </Link>
 
-        <div ref={navRef} className="hidden items-center gap-6 text-sm font-bold text-ink md:flex">
-          {parents.map((parent) => {
-            const children = childrenOf(parent.id);
-            const isOpen = openDropdown === parent.id;
-            return (
-              <div key={parent.id} className="relative">
-                <button
-                  onClick={() => setOpenDropdown(isOpen ? null : parent.id)}
-                  className="flex items-center gap-1 border-b-2 border-transparent py-2 transition-colors hover:border-accent"
-                >
-                  {parent.name}
-                  {children.length > 0 && (
-                    <svg
-                      viewBox="0 0 20 20"
-                      className={`h-3 w-3 fill-current transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    >
-                      <path d="M5 7l5 5 5-5H5z" />
-                    </svg>
-                  )}
-                </button>
-                {isOpen && children.length > 0 && (
-                  <div className="rang-card absolute left-0 top-full z-10 min-w-40 animate-fade-in overflow-hidden py-2">
-                    <Link
-                      href={`/shop?category=${parent.slug}`}
-                      onClick={() => setOpenDropdown(null)}
-                      className="block px-4 py-1.5 text-sm font-bold text-ink hover:bg-brand hover:text-white"
-                    >
-                      All {parent.name}
-                    </Link>
-                    {children.map((c) => (
-                      <Link
-                        key={c.id}
-                        href={`/shop?category=${c.slug}`}
-                        onClick={() => setOpenDropdown(null)}
-                        className="block px-4 py-1.5 text-sm font-medium text-ink-soft hover:bg-brand hover:text-white"
-                      >
-                        {c.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div ref={navRef} className="hidden items-center gap-5 whitespace-nowrap text-xs font-medium text-ink lg:flex">
+          <div className="relative">
+            <button className="py-2" aria-expanded={openDropdown === 'catalog'} onClick={() => setOpenDropdown(openDropdown === 'catalog' ? null : 'catalog')}>Collections <span aria-hidden="true">⌄</span></button>
+            {openDropdown === 'catalog' && <div className="rang-card absolute left-0 top-full z-10 max-h-96 min-w-56 overflow-y-auto p-2">
+              {parents.map(parent => <Link key={parent.id} href={`/shop?category=${parent.slug}`} onClick={() => setOpenDropdown(null)} className="block rounded px-3 py-2 text-sm font-normal hover:bg-ink/5">{parent.name}</Link>)}
+              <Link href="/shop" onClick={() => setOpenDropdown(null)} className="block px-3 py-2 text-sm">View all collections ↗</Link>
+            </div>}
+          </div>
           <Link href="/shop" className="border-b-2 border-transparent py-2 transition-colors hover:border-accent">Shop</Link>
           <Link href="/track" className="border-b-2 border-transparent py-2 transition-colors hover:border-accent">Track Order</Link>
 
           <button
             aria-label="Search"
             onClick={() => setSearchOpen((o) => !o)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2.5">
               <circle cx="11" cy="11" r="7" />
@@ -160,7 +112,7 @@ export default function Header({ categories, logoUrl }: Props) {
             </svg>
           </button>
 
-          <Link href="/wishlist" className="relative flex h-9 w-9 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand">
+          <Link href="/wishlist" className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand">
             <HeartIcon filled={false} />
             {wishlistCount > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-[#241300]">
@@ -171,13 +123,13 @@ export default function Header({ categories, logoUrl }: Props) {
 
           <Link
             href={customerUser ? "/account/orders" : "/account/login"}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand"
             aria-label={customerUser ? "My Account" : "Login"}
           >
             <AccountIcon />
           </Link>
 
-          <Link href="/cart" className="relative flex h-9 w-9 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand" aria-label="Cart">
+          <Link href="/cart" className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:bg-brand" aria-label="Cart">
             <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2.5">
               <circle cx="9" cy="21" r="1" />
               <circle cx="20" cy="21" r="1" />
@@ -193,7 +145,7 @@ export default function Header({ categories, logoUrl }: Props) {
           <ThemeToggle />
         </div>
 
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-3 lg:hidden">
           <ThemeToggle className="h-7 w-7" />
           <button aria-label="Search" onClick={() => setSearchOpen((o) => !o)}>
             <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current text-ink" strokeWidth="2">

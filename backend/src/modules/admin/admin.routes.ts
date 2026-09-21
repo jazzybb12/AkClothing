@@ -22,6 +22,10 @@ import {
 } from "./dashboard.service";
 
 const router = Router();
+router.patch("/announcement", authenticate, requirePermission("SETTINGS"), asyncHandler(async (req, res) => {
+  const data = z.object({ announcementText: z.string().max(240).nullable(), whatsappNumber: z.string().regex(/^\d{8,15}$/).nullable() }).parse(req.body);
+  res.json(await prisma.settings.upsert({ where: { id: "singleton" }, create: { id: "singleton", ...data }, update: data }));
+}));
 
 // GET /api/admin/dashboard?from=YYYY-MM-DD&to=YYYY-MM-DD — sales/traffic report for the
 // selected range (defaults to the last 30 days when params are absent/invalid), plus
@@ -239,6 +243,7 @@ router.get(
 );
 
 const createReviewSchema = z.object({
+  photoUrl: z.string().url().max(191).optional().nullable(),
   productId: z.string().uuid(),
   authorName: z.string().min(2).max(80),
   rating: z.number().int().min(1).max(5),
@@ -258,6 +263,7 @@ router.post(
     const review = await prisma.review.create({
       data: {
         productId: input.productId,
+        photoUrl: input.photoUrl,
         userId: req.user!.id,
         authorName: input.authorName,
         rating: input.rating,
@@ -276,10 +282,10 @@ router.patch(
   authenticate,
   requirePermission("REVIEWS"),
   asyncHandler(async (req, res) => {
-    const { showOnHomepage } = z.object({ showOnHomepage: z.boolean() }).parse(req.body);
+    const input = z.object({ showOnHomepage: z.boolean().optional(), photoUrl: z.string().url().max(191).nullable().optional() }).parse(req.body);
     const review = await prisma.review.update({
       where: { id: req.params.id },
-      data: { showOnHomepage },
+      data: input,
       include: { user: { select: { name: true, email: true } }, product: { select: { name: true, slug: true } } },
     });
     res.json(review);
@@ -299,6 +305,10 @@ router.get(
 );
 
 const bannerSchema = z.object({
+  height: z.number().int().min(380).max(760).optional().nullable(),
+  imagePosition: z.number().int().min(0).max(100).optional(),
+  imageRotation: z.number().int().min(-35).max(35).optional(),
+  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
   eyebrow: z.string().max(60).optional().nullable(),
   heading: z.string().min(2).max(120),
   subtext: z.string().max(200).optional().nullable(),

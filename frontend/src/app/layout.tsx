@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Roboto_Slab, Inter, Jost } from "next/font/google";
 import "./globals.css";
+import "./dune.css";
 import { CartProvider } from "@/lib/CartContext";
 import { WishlistProvider } from "@/lib/WishlistContext";
 import { CustomerAuthProvider } from "@/lib/CustomerAuthContext";
@@ -16,8 +17,8 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 // Falls back to these when the admin hasn't customized branding yet — matches the
 // app's original hardcoded colors, so there's zero visual change out of the box.
-const DEFAULT_BRAND_HEX = "#C4276B";
-const DEFAULT_ACCENT_HEX = "#E8951C";
+const DEFAULT_BRAND_HEX = "#965334";
+const DEFAULT_ACCENT_HEX = "#D2B396";
 
 const robotoSlab = Roboto_Slab({
   subsets: ["latin"],

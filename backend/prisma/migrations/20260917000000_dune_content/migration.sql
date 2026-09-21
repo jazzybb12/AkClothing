@@ -1,0 +1,2 @@
+ALTER TABLE `Settings` ADD COLUMN `announcementText` VARCHAR(240) NULL;
+ALTER TABLE `Review` ADD COLUMN `photoUrl` VARCHAR(191) NULL;

@@ -1,41 +1,6 @@
-import Link from "next/link";
-import { Collection } from "@/lib/types";
-
-interface Props {
-  collections: Collection[];
-  eyebrow?: string;
-  heading?: string;
-}
-
-export default function CollectionsSection({ collections, eyebrow = "Curated", heading = "Shop by Collection" }: Props) {
-  if (collections.length === 0) return null;
-
-  return (
-    <section className="font-rang mt-16">
-      <p className="rang-section-tag">{eyebrow}</p>
-      <h2 className="mb-6 mt-1 font-display text-2xl font-bold text-ink">{heading}</h2>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {collections.map((c) => (
-          <Link
-            key={c.id}
-            href={`/collections/${c.slug}`}
-            className="rang-card group relative flex aspect-[4/3] items-end overflow-hidden p-4 transition-transform duration-200 hover:-translate-y-1"
-          >
-            {c.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={c.imageUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-brand-dark to-brand" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-            <span className="relative font-display text-lg font-bold text-white">{c.name}</span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
+﻿import Link from "next/link";
+import {Collection} from "@/lib/types";
+export default function CollectionsSection({collections,eyebrow="The curated edit",heading="A softer way to stand out."}:{collections:Collection[];eyebrow?:string;heading?:string}){
+ if(!collections.length)return null;
+ return <section className="mt-16"><div className="mb-7 flex items-end justify-between gap-4"><div><p className="rang-section-tag">{eyebrow}</p><h2>{heading}</h2></div><Link className="text-xs" href="/shop">Shop all ↗</Link></div><div className="grid gap-6 sm:grid-cols-3">{collections.map((c,i)=><Link key={c.id} href={`/collections/${c.slug}`} className="group"><div className="dune-collection-art"><span className="absolute left-4 top-4 z-10 text-xs">{String(i+1).padStart(2,'0')}</span><img src={c.imageUrl||'/concepts/dune-garment.svg'} alt={c.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"/></div><div className="mt-4 flex justify-between gap-4"><h3 className="text-xl">{c.name}</h3><span>↗</span></div>{c.description&&<p className="mt-2 text-xs text-ink-soft">{c.description}</p>}</Link>)}</div></section>;
 }

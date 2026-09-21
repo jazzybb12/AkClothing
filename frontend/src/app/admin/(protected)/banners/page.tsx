@@ -5,6 +5,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { uploadImage } from "@/lib/cloudinary";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 import { Banner, BannerGradientKey } from "@/lib/types";
+import BannerAppearance from "@/components/admin/BannerAppearance";
 
 const GRADIENT_OPTIONS: { key: BannerGradientKey; label: string; swatch: string }[] = [
   { key: "brand", label: "Brand (magenta)", swatch: "from-brand-dark to-brand" },
@@ -214,6 +215,11 @@ export default function AdminBannersPage() {
         <div className="space-y-4">
           {banners.map((b, i) => (
             <div key={b.id} className="rang-card p-4">
+              <BannerAppearance banner={b} onSave={async (values) => {
+                if (!token) throw new Error("Sign in required");
+                const updated = await apiFetch<Banner>(`/admin/banners/${b.id}`, { method: "PATCH", token, body: JSON.stringify(values) });
+                setBanners(current => current.map(item => item.id === b.id ? updated : item));
+              }} />
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="relative h-20 w-full shrink-0 overflow-hidden rounded-lg sm:w-36">
                   {b.imageUrl ? (

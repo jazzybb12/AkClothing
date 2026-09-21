@@ -97,7 +97,7 @@ export default async function HomePage() {
 
   return (
     <div>
-      <HeroCarousel banners={banners} />
+      <HeroCarousel banners={banners} showFallback />
 
       <PopularCategories
         categories={categories}
@@ -109,7 +109,7 @@ export default async function HomePage() {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <p className="rang-section-tag">{settings.bazaarEyebrow ?? "Trending Now"}</p>
-            <h2 className="mb-6 mt-1 text-2xl font-bold text-ink">{settings.bazaarHeading ?? "Best of the Bazaar"}</h2>
+            <h2 className="mb-6 mt-1 text-2xl font-bold text-ink">{settings.bazaarHeading ?? "A softer way to stand out."}</h2>
           </div>
         </div>
         {products.length === 0 ? (
@@ -135,6 +135,7 @@ export default async function HomePage() {
         heading={settings.collectionsHeading ?? "Shop by Collection"}
       />
 
+      <section className="dune-editorial"><p className="rang-section-tag">LESS ORDINARY. MORE YOU.</p><h2>A wardrobe with<br />a point of view.</h2><Link href="/about" className="rang-btn-outline">Meet ak.shop ↗</Link></section>
       <ReviewsMarquee
         reviews={reviews}
         eyebrow={settings.reviewsEyebrow ?? "From Our Customers"}

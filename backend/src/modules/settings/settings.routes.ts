@@ -14,6 +14,7 @@ router.get(
       create: { id: "singleton" },
     });
     res.json({
+      announcementText: settings.announcementText,
       logoUrl: settings.logoUrl,
       faviconUrl: settings.faviconUrl,
       brandColor: settings.brandColor,

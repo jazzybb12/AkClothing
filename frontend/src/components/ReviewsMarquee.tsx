@@ -1,44 +1,11 @@
-import { Review } from "@/lib/types";
+"use client";
+import {useEffect,useState} from "react";
+import {Review} from "@/lib/types";
 import StarRating from "./StarRating";
-
-interface Props {
-  reviews: Review[];
-  eyebrow?: string;
-  heading?: string;
-}
-
-function ReviewCard({ review }: { review: Review }) {
-  const name = review.authorName ?? review.user.name;
-  return (
-    <div className="rang-card w-72 shrink-0 p-4">
-      <StarRating value={review.rating} />
-      <p className="mt-2 line-clamp-3 text-sm text-ink">{review.comment}</p>
-      <p className="mt-2 text-xs font-semibold text-ink-soft">
-        {name}
-        {review.product?.name && <span className="font-normal"> · {review.product.name}</span>}
-      </p>
-    </div>
-  );
-}
-
-export default function ReviewsMarquee({ reviews, eyebrow = "From Our Customers", heading = "What They're Saying" }: Props) {
-  if (reviews.length === 0) return null;
-
-  return (
-    <section className="font-rang mt-16">
-      <p className="rang-section-tag">{eyebrow}</p>
-      <h2 className="mb-6 mt-1 font-display text-2xl font-bold text-ink">{heading}</h2>
-      <div className="overflow-hidden">
-        <div className="ribbon-track-slow inline-flex w-max gap-4">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="inline-flex gap-4 pl-4 first:pl-0">
-              {reviews.map((r) => (
-                <ReviewCard key={`${i}-${r.id}`} review={r} />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+export default function ReviewsMarquee({reviews,eyebrow="From our customers",heading="Worn. Loved. Repeated."}:{reviews:Review[];eyebrow?:string;heading?:string}){
+ const [index,setIndex]=useState(0);const [paused,setPaused]=useState(false);const [hover,setHover]=useState(false);const [reduced,setReduced]=useState(true);
+ useEffect(()=>{const q=matchMedia('(prefers-reduced-motion: reduce)');const update=()=>setReduced(q.matches);update();q.addEventListener('change',update);return()=>q.removeEventListener('change',update);},[]);
+ useEffect(()=>{if(reviews.length<2||paused||hover||reduced)return;const t=setInterval(()=>{if(!document.hidden)setIndex(i=>(i+1)%reviews.length);},5000);return()=>clearInterval(t);},[reviews.length,paused,hover,reduced]);
+ return <section className="mt-16" onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)} onFocus={()=>setHover(true)} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))setHover(false);}}><p className="rang-section-tag">{eyebrow}</p><div className="mb-6 flex items-center justify-between gap-4"><h2>{heading}</h2>{reviews.length>1&&<div className="flex gap-3 text-sm"><button aria-label="Previous review" onClick={()=>setIndex(i=>(i-1+reviews.length)%reviews.length)}>←</button><button aria-label="Next review" onClick={()=>setIndex(i=>(i+1)%reviews.length)}>→</button></div>}</div>
+ {reviews.length===0?<p className="rang-card p-6 text-sm text-ink-soft">Customer stories will appear here as reviews are shared. No reviews yet.</p>:<div className="grid gap-4 md:grid-cols-3">{Array.from({length:Math.min(3,reviews.length)},(_,offset)=>reviews[(index+offset)%reviews.length]).map(r=><article key={r.id} className="rang-card flex items-start gap-3 p-5">{r.photoUrl?<img src={r.photoUrl} alt="Photo shared with this review" className="h-14 w-14 shrink-0 rounded-lg object-cover"/>:<span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink/5">{(r.authorName??r.user.name).slice(0,1)}</span>}<div><p className="text-sm font-semibold">{r.authorName??r.user.name}</p><p className="mb-2 text-xs text-ink-soft">{r.product?.name}</p><StarRating value={r.rating}/><p className="my-3 text-sm leading-relaxed">{r.comment}</p><time className="text-xs text-ink-soft" dateTime={r.createdAt}>{new Date(r.createdAt).toLocaleDateString('en-GB',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'})}</time></div></article>)}</div>}</section>;
 }

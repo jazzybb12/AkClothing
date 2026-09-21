@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 import { uploadImage } from "@/lib/cloudinary";
+import AnnouncementEditor from "@/components/admin/AnnouncementEditor";
 
 interface Settings {
   logoUrl: string | null;
@@ -146,6 +147,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="max-w-lg">
       <h1 className="mb-6 text-2xl font-bold">Settings</h1>
+      <AnnouncementEditor />
 
       <div className="rang-card mb-8 p-5">
         <h2 className="mb-4 font-semibold">My Account</h2>

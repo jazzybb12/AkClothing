@@ -36,6 +36,22 @@ const authLimiter = rateLimit({
   message: { error: "Too many attempts. Please try again in a few minutes." },
 });
 
+// Independent buckets: requesting/verifying a code must not exhaust sign-in attempts.
+const resetRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many reset code requests. Wait 15 minutes before requesting another code." },
+});
+const resetVerificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many code verification requests. Wait 15 minutes, then request a new code." },
+});
+
 const contactLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -78,7 +94,8 @@ export function createApp() {
 
   app.use("/api/auth/login", authLimiter);
   app.use("/api/auth/register", authLimiter);
-  app.use("/api/auth/forgot-password", authLimiter);
+  app.use("/api/auth/forgot-password", resetRequestLimiter);
+  app.use("/api/auth/reset-password-code", resetVerificationLimiter);
   app.use("/api/auth/me", (req, res, next) =>
     req.method === "PATCH" ? accountUpdateLimiter(req, res, next) : next()
   );
