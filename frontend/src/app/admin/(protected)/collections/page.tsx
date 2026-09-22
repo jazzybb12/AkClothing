@@ -5,6 +5,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { uploadImage } from "@/lib/cloudinary";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 import { Collection } from "@/lib/types";
+import Link from "next/link";
 
 interface ProductOption {
   id: string;
@@ -206,6 +207,7 @@ export default function AdminCollectionsPage() {
         <div className="space-y-4">
           {collections.map((c, i) => (
             <div key={c.id} className="rang-card p-4">
+              <Link href={`/admin/collections/${c.id}`} className="mb-4 inline-block rounded-lg bg-ink px-4 py-2 text-sm text-paper">Open collection editor ↗</Link>
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="relative h-20 w-full shrink-0 overflow-hidden rounded-lg sm:w-36">
                   {c.imageUrl ? (

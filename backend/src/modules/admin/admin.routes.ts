@@ -22,6 +22,12 @@ import {
 } from "./dashboard.service";
 
 const router = Router();
+router.get("/products", authenticate, requirePermission("PRODUCTS"), asyncHandler(async (req, res) => {
+  const { q, status, page } = z.object({ q: z.string().default(""), status: z.enum(["ACTIVE", "DRAFT"]).optional(), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
+  const where = { name: { contains: q }, ...(status ? { status } : {}) };
+  const [items, total] = await Promise.all([prisma.product.findMany({ where, include: { category: true, images: { orderBy: { position: "asc" } }, variants: true }, orderBy: { createdAt: "desc" }, skip: (page-1)*25, take: 25 }), prisma.product.count({ where })]);
+  res.json({ items, total });
+}));
 router.patch("/announcement", authenticate, requirePermission("SETTINGS"), asyncHandler(async (req, res) => {
   const data = z.object({ announcementText: z.string().max(240).nullable(), whatsappNumber: z.string().regex(/^\d{8,15}$/).nullable() }).parse(req.body);
   res.json(await prisma.settings.upsert({ where: { id: "singleton" }, create: { id: "singleton", ...data }, update: data }));
@@ -430,6 +436,13 @@ router.get(
   })
 );
 
+router.get("/collection-products", authenticate, requirePermission("COLLECTIONS"), asyncHandler(async (req, res) => {
+  const { q, page } = z.object({ q: z.string().default(""), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
+  const where = { name: { contains: q } };
+  const [items, total] = await Promise.all([prisma.product.findMany({ where, select: { id: true, name: true, status: true, basePrice: true, images: { take: 1, orderBy: { position: "asc" } } }, orderBy: { name: "asc" }, skip: (page - 1) * 24, take: 24 }), prisma.product.count({ where })]);
+  res.json({ items, total });
+}));
+
 // GET /api/admin/collections/:id — single collection with its assigned product IDs, for
 // the product-picker checklist (unlike the public detail route, this isn't filtered to
 // active products/collections — an admin needs to edit a hidden collection too)
@@ -440,7 +453,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const collection = await prisma.collection.findUnique({
       where: { id: req.params.id },
-      include: { products: { select: { id: true } } },
+      include: { products: { select: { id: true, name: true, status: true, basePrice: true, images: { take: 1, orderBy: { position: "asc" } } } } },
     });
     if (!collection) throw new AppError(404, "Collection not found");
     res.json({ ...collection, productIds: collection.products.map((p) => p.id) });
@@ -467,7 +480,7 @@ router.post(
   })
 );
 
-const collectionUpdateSchema = collectionSchema.partial();
+const collectionUpdateSchema = collectionSchema.partial().extend({ productIds: z.array(z.string().uuid()).optional() });
 
 // PATCH /api/admin/collections/:id — edit name/description/image, reorder, toggle active.
 // Renaming re-slugifies (same convention as Products/Categories) — fine since collection
@@ -478,9 +491,10 @@ router.patch(
   requirePermission("COLLECTIONS"),
   asyncHandler(async (req, res) => {
     const input = collectionUpdateSchema.parse(req.body);
+    const { productIds, ...details } = input;
     const collection = await prisma.collection.update({
       where: { id: req.params.id },
-      data: { ...input, ...(input.name ? { slug: slugify(input.name) } : {}) },
+      data: { ...details, ...(input.name ? { slug: slugify(input.name) } : {}), ...(productIds ? { products: { set: productIds.map(id => ({ id })) } } : {}) },
     });
     res.json(collection);
   })

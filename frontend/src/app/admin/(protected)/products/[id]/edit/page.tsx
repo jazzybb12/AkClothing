@@ -164,9 +164,9 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="mx-auto max-w-7xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Edit Product</h1>
+        <div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-bold">{product.name}</h1><span className="rounded-full bg-ink/10 px-3 py-1 text-xs">{product.status === "ACTIVE" ? "Active" : "Draft"}</span></div>
         <button
           onClick={() => router.push("/admin/products")}
           className="text-sm text-ink-soft transition hover:text-brand hover:underline"
@@ -177,7 +177,7 @@ export default function EditProductPage() {
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      <form onSubmit={handleSaveDetails} className="space-y-4 rang-card p-5">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]"><div className="min-w-0 space-y-5"><form id="product-details" onSubmit={handleSaveDetails} className="space-y-4 rounded-xl border border-ink/15 bg-surface p-5 shadow-sm">
         <div>
           <label className="mb-1 block text-sm font-medium">Product Name</label>
           <input
@@ -193,11 +193,11 @@ export default function EditProductPage() {
             required
             value={product.description}
             onChange={(e) => setProduct({ ...product, description: e.target.value })}
-            rows={4}
+            rows={8}
             className="rang-input"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4">
           <div>
             <label className="mb-1 block text-sm font-medium">Base Price (Rs.)</label>
             <input
@@ -208,37 +208,9 @@ export default function EditProductPage() {
               className="rang-input"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Category</label>
-            <select value={product.category.id} onChange={(e) => handleCategoryChange(e.target.value)} className="rang-input">
-              {categoryOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Status</label>
-          <select
-            value={product.status}
-            onChange={(e) => setProduct({ ...product, status: e.target.value as "ACTIVE" | "DRAFT" })}
-            className="rang-input"
-          >
-            <option value="ACTIVE">Active (visible on the store)</option>
-            <option value="DRAFT">Draft (hidden)</option>
-          </select>
-        </div>
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            checked={product.featured}
-            onChange={(e) => setProduct({ ...product, featured: e.target.checked })}
-            className="h-4 w-4 accent-brand"
-          />
-          Feature on homepage (&quot;Best of the Bazaar&quot;)
-        </label>
+
         <div>
           <label className="mb-1 block text-sm font-medium">SEO Title (optional)</label>
           <input
@@ -262,8 +234,28 @@ export default function EditProductPage() {
           {saving ? "Saving..." : "Save Details"}
         </button>
       </form>
+      <div className="rounded-xl border border-ink/15 bg-surface p-5 shadow-sm">
+        <h2 className="mb-3 font-semibold">Product Images</h2>
+        <div className="flex flex-wrap gap-3">
+          {product.images.map((img) => (
+            <div key={img.id} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.url} alt="" className="h-36 w-36 rounded-lg border border-ink/15 object-contain" />
+              <button
+                onClick={() => deleteImage(img.id)}
+                aria-label="Remove image"
+                className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="mt-4 text-sm" />
+        {uploading && <p className="mt-1 text-sm text-ink-soft">Uploading...</p>}
+      </div>
 
-      <div className="mt-6 rang-card p-5">
+      <div className="rounded-xl border border-ink/15 bg-surface p-5 shadow-sm">
         <h2 className="mb-3 font-semibold">Sizes, Colors &amp; Stock</h2>
         <div className="space-y-2">
           {product.variants.map((v) => (
@@ -345,26 +337,36 @@ export default function EditProductPage() {
         </form>
       </div>
 
-      <div className="mt-6 rang-card p-5">
-        <h2 className="mb-3 font-semibold">Product Images</h2>
-        <div className="flex flex-wrap gap-3">
-          {product.images.map((img) => (
-            <div key={img.id} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="h-20 w-20 rounded-lg border-2 border-ink/15 object-cover" />
-              <button
-                onClick={() => deleteImage(img.id)}
-                aria-label="Remove image"
-                className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+
+</div><aside className="space-y-5 lg:col-start-2 lg:row-start-1"><section className="rounded-xl border border-ink/15 bg-surface p-5 shadow-sm space-y-4">        <div>
+          <label className="mb-1 block text-sm font-medium">Status</label>
+          <select
+            value={product.status}
+            onChange={(e) => setProduct({ ...product, status: e.target.value as "ACTIVE" | "DRAFT" })}
+            className="rang-input"
+          >
+            <option value="ACTIVE">Active (visible on the store)</option>
+            <option value="DRAFT">Draft (hidden)</option>
+          </select>
         </div>
-        <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="mt-4 text-sm" />
-        {uploading && <p className="mt-1 text-sm text-ink-soft">Uploading...</p>}
-      </div>
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={product.featured}
+            onChange={(e) => setProduct({ ...product, featured: e.target.checked })}
+            className="h-4 w-4 accent-brand"
+          />
+          Feature on homepage
+        </label></section><section className="rounded-xl border border-ink/15 bg-surface p-5 shadow-sm"><h2 className="mb-4 font-semibold">Product organization</h2>          <div>
+            <label className="mb-1 block text-sm font-medium">Category</label>
+            <select value={product.category.id} onChange={(e) => handleCategoryChange(e.target.value)} className="rang-input">
+              {categoryOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div></section><section className="rounded-xl border border-ink/15 bg-surface p-5 shadow-sm"><h2 className="mb-3 font-semibold">Publishing</h2><p className="text-sm text-ink-soft">{product.status === "ACTIVE" ? "Visible on your online store." : "Draft — hidden from your online store."}</p></section></aside></div>
     </div>
   );
 }

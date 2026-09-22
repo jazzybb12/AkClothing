@@ -19,11 +19,21 @@ export default function AdminOrdersPage() {
   const [detailCache, setDetailCache] = useState<Record<string, Order>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<{ orders: number; items: number; shipped: number; delivered: number; returned: number } | null>(null);
+
   async function load() {
     if (!token) return;
-    const query = statusFilter ? `?status=${statusFilter}` : "";
-    const { items } = await apiFetch<{ items: Order[] }>(`/orders${query}`, { token });
+    setLoading(true);
+    setError(null);
+    try {
+    const query = `?page=${page}${statusFilter ? "&status=" + statusFilter : ""}`;
+    const { items, total, summary } = await apiFetch<{ items: Order[]; total: number; summary: { orders: number; items: number; shipped: number; delivered: number; returned: number } }>(`/orders${query}`, { token });
     setOrders(items);
+    setTotal(total);
+    setSummary(summary);
     setCourierChoice((prev) => {
       const next = { ...prev };
       for (const o of items) {
@@ -31,12 +41,13 @@ export default function AdminOrdersPage() {
       }
       return next;
     });
+    } catch (err) { setError(err instanceof ApiError ? err.message : "Could not load orders"); } finally { setLoading(false); }
   }
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, statusFilter]);
+  }, [token, statusFilter, page]);
 
   async function changeStatus(orderId: string, status: string) {
     if (!token) return;
@@ -92,7 +103,8 @@ export default function AdminOrdersPage() {
         <h1 className="text-2xl font-bold">Orders</h1>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filter orders by status"
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="rang-input w-auto py-1.5"
         >
           <option value="">All statuses</option>
@@ -104,10 +116,15 @@ export default function AdminOrdersPage() {
         </select>
       </div>
 
+      <div className="mb-5 grid overflow-hidden rounded-2xl border border-ink/15 bg-surface shadow-sm sm:grid-cols-3 xl:grid-cols-6">
+        <div className="flex items-center gap-2 border-b border-ink/10 p-5 text-sm text-ink-soft">All time</div>
+        {[["Orders", summary?.orders], ["Items ordered", summary?.items], ["Orders returned", summary?.returned], ["Orders shipped", summary?.shipped], ["Orders delivered", summary?.delivered]].map(([label, value]) => <div key={label} className="border-b border-l border-ink/10 p-5"><p className="mb-2 text-sm font-medium">{label}</p><p className="text-lg font-semibold">{value ?? "—"}</p></div>)}
+      </div>
+
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      <div className="rang-card overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-hidden rounded-2xl border border-ink/15 bg-surface shadow-sm">
+        {loading ? <div role="status" className="p-16 text-center text-ink-soft">Loading orders...</div> : error ? <div className="p-12 text-center"><button onClick={load} className="rang-btn-outline">Try again</button></div> : orders.length > 0 ? <div className="overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="bg-ink/5 text-ink-soft">
             <tr>
               <th className="px-4 py-2">Order #</th>
@@ -270,8 +287,13 @@ export default function AdminOrdersPage() {
               );
             })}
           </tbody>
-        </table>
-        {orders.length === 0 && <p className="p-4 text-sm text-ink-soft">No orders yet.</p>}
+        </table></div> : <div className="flex min-h-[480px] flex-col items-center justify-center px-6 py-16 text-center">
+          <svg aria-hidden="true" viewBox="0 0 200 200" className="mb-8 h-44 w-44"><circle cx="100" cy="105" r="85" fill="#f0f1f2"/><path d="M48 22h80l26 27v116H48z" fill="white" stroke="#d4d6d8" strokeWidth="2"/><path d="M128 22v28h26" fill="#d4d6d8"/><rect x="62" y="40" width="32" height="7" rx="3" fill="#477cab"/><rect x="62" y="70" width="34" height="34" rx="3" fill="#d9efeb"/><path d="M67 84h24a12 12 0 0 1-24 0" fill="#459d97"/><path d="M111 78h27m-27 10h20m-27 36h27m-27 10h20" stroke="#d4d6d8" strokeWidth="5" strokeLinecap="round"/><rect x="62" y="116" width="34" height="30" rx="3" fill="#f5dfd6"/><path d="M70 139l5-18h9l5 18z" fill="#d78469"/><path d="M24 152h53l7 20h32l7-20h53a85 85 0 0 1-152 0" fill="#399b96"/></svg>
+          <h2 className="mb-2 text-lg font-semibold">{statusFilter ? "No matching orders" : "Your orders will show here"}</h2>
+          <p className="max-w-md text-sm leading-6 text-ink-soft">{statusFilter ? "Choose another status to see more orders." : "When a customer places an order, you can manage its items, shipping, and delivery status here."}</p>
+          {statusFilter ? <button className="rang-btn-outline mt-6" onClick={() => { setStatusFilter(""); setPage(1); }}>View all orders</button> : <a href="/" target="_blank" rel="noreferrer" className="rang-btn-primary mt-6">Visit your store</a>}
+        </div>}
+        {!loading && !error && total > 0 && <div className="flex items-center justify-between border-t border-ink/10 px-5 py-4 text-sm"><span>{total} orders · Page {page} of {Math.ceil(total / 25)}</span><div className="flex gap-3"><button disabled={page === 1} onClick={() => setPage(page - 1)} className="disabled:opacity-40">Previous</button><button disabled={page * 25 >= total} onClick={() => setPage(page + 1)} className="disabled:opacity-40">Next</button></div></div>}
       </div>
     </div>
   );

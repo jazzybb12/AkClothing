@@ -95,7 +95,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const query = listQuerySchema.parse(req.query);
     const where = query.status ? { status: query.status } : {};
-    const [items, total] = await Promise.all([
+    const [items, total, statusCounts, itemCount] = await Promise.all([
       prisma.order.findMany({
         where,
         include: { items: true },
@@ -104,8 +104,10 @@ router.get(
         orderBy: { createdAt: "desc" },
       }),
       prisma.order.count({ where }),
+      prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.orderItem.aggregate({ _sum: { qty: true } }),
     ]);
-    res.json({ items, total, page: query.page, pageSize: query.pageSize });
+    res.json({ items, total, page: query.page, pageSize: query.pageSize, summary: { orders: statusCounts.reduce((sum, row) => sum + row._count._all, 0), items: itemCount._sum.qty ?? 0, shipped: statusCounts.find(row => row.status === "SHIPPED")?._count._all ?? 0, delivered: statusCounts.find(row => row.status === "DELIVERED")?._count._all ?? 0, returned: statusCounts.find(row => row.status === "RETURNED")?._count._all ?? 0 } });
   })
 );
 
