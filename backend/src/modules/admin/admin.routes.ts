@@ -23,8 +23,8 @@ import {
 
 const router = Router();
 router.get("/products", authenticate, requirePermission("PRODUCTS"), asyncHandler(async (req, res) => {
-  const { q, status, page } = z.object({ q: z.string().default(""), status: z.enum(["ACTIVE", "DRAFT"]).optional(), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
-  const where = { name: { contains: q }, ...(status ? { status } : {}) };
+  const { q, status, page, categoryId } = z.object({ categoryId: z.string().uuid().optional(), q: z.string().default(""), status: z.enum(["ACTIVE", "DRAFT"]).optional(), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
+  const where = { name: { contains: q }, ...(categoryId ? { categoryId } : {}), ...(status ? { status } : {}) };
   const [items, total] = await Promise.all([prisma.product.findMany({ where, include: { category: true, images: { orderBy: { position: "asc" } }, variants: true }, orderBy: { createdAt: "desc" }, skip: (page-1)*25, take: 25 }), prisma.product.count({ where })]);
   res.json({ items, total });
 }));

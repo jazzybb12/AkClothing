@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
@@ -129,7 +130,7 @@ export default function AdminCategoriesPage() {
                     className="rang-input flex-1 py-1 font-semibold"
                   />
                 ) : (
-                  <p className="font-semibold">{p.name}</p>
+                  <Link href={`/admin/categories/${p.id}`} className="font-semibold hover:underline">{p.name} <span className="ml-2 text-xs font-normal text-ink-soft">View products →</span></Link>
                 )}
                 <div className="flex shrink-0 gap-3">
                   {editingId === p.id ? (
@@ -176,7 +177,7 @@ export default function AdminCategoriesPage() {
                           </select>
                         </div>
                       ) : (
-                        <span>— {c.name}</span>
+                        <Link href={`/admin/categories/${c.id}`} className="hover:underline">— {c.name} · View products →</Link>
                       )}
                       <div className="flex shrink-0 gap-3">
                         {editingId === c.id ? (
