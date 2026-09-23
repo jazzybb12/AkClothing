@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch, SESSION_EVENT } from "./api";
+import { apiFetch, SESSION_EVENT, getSessionToken, saveSessionToken, clearSessionToken } from "./api";
 
 interface CustomerUser {
   id: string;
@@ -15,7 +15,7 @@ interface CustomerAuthValue {
   user: CustomerUser | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -30,7 +30,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const syncSession = () => {
-      const current = window.localStorage.getItem(TOKEN_KEY);
+      const current = getSessionToken(TOKEN_KEY);
       setToken(current);
       if (!current) setUser(null);
     };
@@ -43,28 +43,28 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(TOKEN_KEY);
+    const stored = getSessionToken(TOKEN_KEY);
     if (!stored) {
       setLoading(false);
       return;
     }
     apiFetch<CustomerUser>("/auth/me", { token: stored })
       .then((u) => {
-        const current = window.localStorage.getItem(TOKEN_KEY);
+        const current = getSessionToken(TOKEN_KEY);
         if (!current) return;
         setToken(current);
         setUser(u);
       })
-      .catch(() => window.localStorage.removeItem(TOKEN_KEY))
+      .catch(() => clearSessionToken(TOKEN_KEY))
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, remember = false) {
     const result = await apiFetch<{ accessToken: string; user: CustomerUser }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    window.localStorage.setItem(TOKEN_KEY, result.accessToken);
+    saveSessionToken(TOKEN_KEY, result.accessToken, remember);
     setToken(result.accessToken);
     setUser(result.user);
   }
@@ -74,7 +74,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
       method: "POST",
       body: JSON.stringify({ name, email, password, phone }),
     });
-    window.localStorage.setItem(TOKEN_KEY, result.accessToken);
+    saveSessionToken(TOKEN_KEY, result.accessToken);
     const me = await apiFetch<CustomerUser>("/auth/me", { token: result.accessToken });
     setToken(result.accessToken);
     setUser(me);
@@ -82,7 +82,7 @@ export function CustomerAuthProvider({ children }: { children: React.ReactNode }
 
   async function logout() {
 
-    window.localStorage.removeItem(TOKEN_KEY);
+    clearSessionToken(TOKEN_KEY);
     setToken(null);
     setUser(null);
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});

@@ -25,6 +25,23 @@ function extractErrorMessage(body: { error?: string; details?: { fieldErrors?: R
 }
 
 
+// Session-only sign-ins live in this tab; remembered sign-ins survive browser restarts.
+export function getSessionToken(key: string): string | null {
+  return window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key);
+}
+export function clearSessionToken(key: string) {
+  window.localStorage.removeItem(key);
+  window.sessionStorage.removeItem(key);
+}
+export function saveSessionToken(key: string, token: string, remember = false) {
+  clearSessionToken(key);
+  (remember ? window.localStorage : window.sessionStorage).setItem(key, token);
+}
+function replaceSessionToken(key: string, token: string) {
+  const remember = window.sessionStorage.getItem(key) === null;
+  saveSessionToken(key, token, remember);
+}
+
 const SESSION_KEYS = ["admin-access-token", "customer-access-token"];
 export const SESSION_EVENT = "auth-session-changed";
 const renewals = new Map<string, Promise<string>>();
@@ -38,7 +55,7 @@ function subject(token: string): string | null {
 
 function expireSession(token: string) {
   for (const key of SESSION_KEYS) {
-    if (window.localStorage.getItem(key) === token) window.localStorage.removeItem(key);
+    if (getSessionToken(key) === token) clearSessionToken(key);
   }
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
@@ -47,7 +64,7 @@ async function renewSession(token: string): Promise<string> {
   const pending = renewals.get(token);
   if (pending) return pending;
   const operation = (async () => {
-    const keys = SESSION_KEYS.filter(key => window.localStorage.getItem(key) === token);
+    const keys = SESSION_KEYS.filter(key => getSessionToken(key) === token);
     if (!keys.length) throw new ApiError(401, "Your session ended. Please sign in again.");
     const response = await fetch(API_URL + "/auth/refresh", {
       method: "POST", credentials: "include", cache: "no-store",
@@ -65,9 +82,9 @@ async function renewSession(token: string): Promise<string> {
       expireSession(token);
       throw new ApiError(401, "Your session changed. Please sign in again.");
     }
-    const currentKeys = keys.filter(key => window.localStorage.getItem(key) === token);
+    const currentKeys = keys.filter(key => getSessionToken(key) === token);
     if (!currentKeys.length) throw new ApiError(401, "Your session ended. Please sign in again.");
-    currentKeys.forEach(key => window.localStorage.setItem(key, result.accessToken));
+    currentKeys.forEach(key => replaceSessionToken(key, result.accessToken));
     window.dispatchEvent(new Event(SESSION_EVENT));
     return result.accessToken as string;
   })();
@@ -87,7 +104,7 @@ async function sessionFetch(path: string, options: RequestOptions, json: boolean
   if (response.status !== 401 || !token || typeof window === "undefined" ||
       path === "/auth/refresh" || options.signal?.aborted) return response;
   // Another request may already have renewed this account's access token.
-  const newer = SESSION_KEYS.map(key => window.localStorage.getItem(key))
+  const newer = SESSION_KEYS.map(key => getSessionToken(key))
     .find(value => value && value !== token && subject(value) === subject(token));
   const replacement = newer || await renewSession(token);
   if (options.signal?.aborted) throw new DOMException("Request aborted", "AbortError");

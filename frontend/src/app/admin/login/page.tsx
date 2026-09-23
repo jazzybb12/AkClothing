@@ -11,6 +11,7 @@ export default function AdminLoginPage() {
   const { login } = useAdminAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [remember, setRemember] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +21,7 @@ export default function AdminLoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await login(email, password);
+      await login(email, password, remember);
       router.push("/admin/dashboard");
       // Deliberately NOT resetting `submitting` here. router.push() returns before the
       // dashboard route has actually finished loading (in dev mode this can take several
@@ -57,6 +58,11 @@ export default function AdminLoginPage() {
             className="rang-input"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-brand" />
+          Remember me on this device
+        </label>
+        <p className="text-xs text-ink-soft">Leave unchecked to keep this sign-in only in this tab.</p>
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <button type="submit" disabled={submitting} className="rang-btn-primary w-full">
           {submitting ? "Signing in..." : "Sign In"}

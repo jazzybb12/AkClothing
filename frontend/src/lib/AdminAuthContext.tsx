@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch, ApiError, SESSION_EVENT } from "./api";
+import { apiFetch, ApiError, SESSION_EVENT, getSessionToken, saveSessionToken, clearSessionToken } from "./api";
 
 interface AdminUser {
   id: string;
@@ -22,7 +22,7 @@ interface AdminAuthValue {
   user: AdminUser | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (input: UpdateProfileInput) => Promise<void>;
 }
@@ -37,7 +37,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const syncSession = () => {
-      const current = window.localStorage.getItem(TOKEN_KEY);
+      const current = getSessionToken(TOKEN_KEY);
       setToken(current);
       if (!current) setUser(null);
     };
@@ -50,23 +50,23 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(TOKEN_KEY);
+    const stored = getSessionToken(TOKEN_KEY);
     if (!stored) {
       setLoading(false);
       return;
     }
     apiFetch<AdminUser>("/auth/me", { token: stored })
       .then((u) => {
-        const current = window.localStorage.getItem(TOKEN_KEY);
+        const current = getSessionToken(TOKEN_KEY);
         if (!current) return;
         setToken(current);
         setUser(u);
       })
-      .catch(() => window.localStorage.removeItem(TOKEN_KEY))
+      .catch(() => clearSessionToken(TOKEN_KEY))
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, remember = false) {
     const result = await apiFetch<{ accessToken: string; user: AdminUser }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -74,14 +74,14 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     if (result.user.role !== "ADMIN" && result.user.role !== "STAFF") {
       throw new ApiError(403, "This account does not have admin access");
     }
-    window.localStorage.setItem(TOKEN_KEY, result.accessToken);
+    saveSessionToken(TOKEN_KEY, result.accessToken, remember);
     setToken(result.accessToken);
     setUser(result.user);
   }
 
   async function logout() {
 
-    window.localStorage.removeItem(TOKEN_KEY);
+    clearSessionToken(TOKEN_KEY);
     setToken(null);
     setUser(null);
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});

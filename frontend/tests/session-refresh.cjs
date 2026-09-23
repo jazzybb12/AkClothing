@@ -7,11 +7,13 @@ const code = ts.transpileModule(fs.readFileSync(require("node:path").join(__dirn
 const jwt = (sub, version) => "x." + Buffer.from(JSON.stringify({sub, version})).toString("base64url") + ".x";
 function setup(handler) {
  const data = new Map();
+ const session = new Map();
  const window = new EventTarget();
  window.localStorage = { getItem: k => data.get(k) ?? null, setItem: (k,v) => data.set(k,v), removeItem: k => data.delete(k) };
+ window.sessionStorage = { getItem: k => session.get(k) ?? null, setItem: (k,v) => session.set(k,v), removeItem: k => session.delete(k) };
  const context = { exports: {}, process: {env:{}}, fetch:handler, window, Event, Headers, DOMException, atob, console };
  vm.runInNewContext(code, context);
- return {...context.exports, data};
+ return {...context.exports, data, session};
 }
 test("parallel expired requests share renewal and retry original payload", async () => {
  let refreshes=0, retries=0;
@@ -55,4 +57,23 @@ test("CSV download renews token too",async()=>{
  const app=setup(async(url,init)=>url.endsWith("/auth/refresh")?Response.json({accessToken:fresh}):init.headers.get("Authorization")==="Bearer "+old?new Response("",{status:401}):new Response("order,total"));
  app.data.set("admin-access-token",old);
  assert.equal(await (await app.apiFetchBlob("/export",{token:old})).text(),"order,total");
+});
+
+test("remember choice selects storage and clears previous persistence",()=>{
+ const app=setup(async()=>Response.json({}));
+ app.saveSessionToken("admin-access-token","remembered",true);
+ assert.equal(app.data.get("admin-access-token"),"remembered");
+ app.saveSessionToken("admin-access-token","temporary",false);
+ assert.equal(app.data.has("admin-access-token"),false);
+ assert.equal(app.session.get("admin-access-token"),"temporary");
+ app.clearSessionToken("admin-access-token");
+ assert.equal(app.getSessionToken("admin-access-token"),null);
+});
+test("renewal preserves session-only sign-in",async()=>{
+ const old=jwt("a",1),fresh=jwt("a",2);
+ const app=setup(async(url,init)=>url.endsWith("/auth/refresh")?Response.json({accessToken:fresh}):init.headers.get("Authorization")==="Bearer "+old?new Response("",{status:401}):Response.json({ok:true}));
+ app.saveSessionToken("admin-access-token",old,false);
+ await app.apiFetch("/categories",{token:old});
+ assert.equal(app.session.get("admin-access-token"),fresh);
+ assert.equal(app.data.has("admin-access-token"),false);
 });
