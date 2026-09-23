@@ -215,17 +215,8 @@ router.delete(
   authenticate,
   requirePermission("PRODUCTS"),
   asyncHandler(async (req, res) => {
-    const product = await prisma.product.findUnique({
-      where: { id: req.params.id },
-      select: { variants: { select: { _count: { select: { orderItems: true } } } } },
-    });
+    const product = await prisma.product.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!product) return res.status(404).json({ error: "Product not found" });
-    const hasOrderHistory = product.variants.some((variant) => variant._count.orderItems > 0);
-    if (hasOrderHistory) {
-      return res.status(409).json({
-        error: "This product cannot be deleted because it is part of an order. Keep it for order history and set it to Draft instead.",
-      });
-    }
     // Remove many-to-many collection links before cascading the product's own records.
     await prisma.product.update({
       where: { id: req.params.id },
