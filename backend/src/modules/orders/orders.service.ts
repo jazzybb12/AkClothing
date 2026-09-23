@@ -182,6 +182,9 @@ export async function cancelOrder(orderId: string, requester: { userId?: string;
     }
 
     for (const item of order.items) {
+      // A deleted product may leave an order item with only its historical snapshot.
+      // There is no inventory to restock when its variant reference is null.
+      if (!item.variantId) continue;
       const variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
       if (variant) {
         await tx.productVariant.update({
