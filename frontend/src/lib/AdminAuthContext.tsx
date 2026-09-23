@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch, ApiError } from "./api";
+import { apiFetch, ApiError, SESSION_EVENT } from "./api";
 
 interface AdminUser {
   id: string;
@@ -36,6 +36,20 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const syncSession = () => {
+      const current = window.localStorage.getItem(TOKEN_KEY);
+      setToken(current);
+      if (!current) setUser(null);
+    };
+    window.addEventListener(SESSION_EVENT, syncSession);
+    window.addEventListener("storage", syncSession);
+    return () => {
+      window.removeEventListener(SESSION_EVENT, syncSession);
+      window.removeEventListener("storage", syncSession);
+    };
+  }, []);
+
+  useEffect(() => {
     const stored = window.localStorage.getItem(TOKEN_KEY);
     if (!stored) {
       setLoading(false);
@@ -43,7 +57,9 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     }
     apiFetch<AdminUser>("/auth/me", { token: stored })
       .then((u) => {
-        setToken(stored);
+        const current = window.localStorage.getItem(TOKEN_KEY);
+        if (!current) return;
+        setToken(current);
         setUser(u);
       })
       .catch(() => window.localStorage.removeItem(TOKEN_KEY))
@@ -64,10 +80,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+
     window.localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
+    await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
   }
 
   async function updateProfile(input: UpdateProfileInput) {

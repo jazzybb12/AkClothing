@@ -24,19 +24,80 @@ function extractErrorMessage(body: { error?: string; details?: { fieldErrors?: R
   return body.error ?? "Request failed";
 }
 
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { token, headers, ...rest } = options;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...rest,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    cache: "no-store",
-  });
+const SESSION_KEYS = ["admin-access-token", "customer-access-token"];
+export const SESSION_EVENT = "auth-session-changed";
+const renewals = new Map<string, Promise<string>>();
+
+function subject(token: string): string | null {
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, "="))).sub ?? null;
+  } catch { return null; }
+}
+
+function expireSession(token: string) {
+  for (const key of SESSION_KEYS) {
+    if (window.localStorage.getItem(key) === token) window.localStorage.removeItem(key);
+  }
+  window.dispatchEvent(new Event(SESSION_EVENT));
+}
+
+async function renewSession(token: string): Promise<string> {
+  const pending = renewals.get(token);
+  if (pending) return pending;
+  const operation = (async () => {
+    const keys = SESSION_KEYS.filter(key => window.localStorage.getItem(key) === token);
+    if (!keys.length) throw new ApiError(401, "Your session ended. Please sign in again.");
+    const response = await fetch(API_URL + "/auth/refresh", {
+      method: "POST", credentials: "include", cache: "no-store",
+    });
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) expireSession(token);
+      throw new ApiError(response.status, response.status >= 500
+        ? "Could not renew your session. Please try again."
+        : "Your session expired. Please sign in again.");
+    }
+    const result = await response.json();
+    // The shared cookie may belong to another account logged in in this browser.
+    if (typeof result.accessToken !== "string" || !subject(token) ||
+        subject(result.accessToken) !== subject(token)) {
+      expireSession(token);
+      throw new ApiError(401, "Your session changed. Please sign in again.");
+    }
+    const currentKeys = keys.filter(key => window.localStorage.getItem(key) === token);
+    if (!currentKeys.length) throw new ApiError(401, "Your session ended. Please sign in again.");
+    currentKeys.forEach(key => window.localStorage.setItem(key, result.accessToken));
+    window.dispatchEvent(new Event(SESSION_EVENT));
+    return result.accessToken as string;
+  })();
+  renewals.set(token, operation);
+  try { return await operation; } finally { renewals.delete(token); }
+}
+
+async function sessionFetch(path: string, options: RequestOptions, json: boolean): Promise<Response> {
+  const { token, headers, ...rest } = options;
+  const send = (accessToken?: string) => {
+    const requestHeaders = new Headers(headers);
+    if (json && !requestHeaders.has("Content-Type")) requestHeaders.set("Content-Type", "application/json");
+    if (accessToken) requestHeaders.set("Authorization", "Bearer " + accessToken);
+    return fetch(API_URL + path, { ...rest, credentials: "include", headers: requestHeaders, cache: "no-store" });
+  };
+  const response = await send(token);
+  if (response.status !== 401 || !token || typeof window === "undefined" ||
+      path === "/auth/refresh" || options.signal?.aborted) return response;
+  // Another request may already have renewed this account's access token.
+  const newer = SESSION_KEYS.map(key => window.localStorage.getItem(key))
+    .find(value => value && value !== token && subject(value) === subject(token));
+  const replacement = newer || await renewSession(token);
+  if (options.signal?.aborted) throw new DOMException("Request aborted", "AbortError");
+  const retried = await send(replacement);
+  if (retried.status === 401) expireSession(replacement);
+  return retried;
+}
+
+export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await sessionFetch(path, options, true);
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
@@ -50,17 +111,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 // Sibling to apiFetch for endpoints that return a file (CSV export) instead of JSON —
 // apiFetch can't be reused since it unconditionally parses the body as JSON.
 export async function apiFetchBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
-  const { token, headers, ...rest } = options;
-
-  const response = await fetch(`${API_URL}${path}`, {
-    ...rest,
-    credentials: "include",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    cache: "no-store",
-  });
+  const response = await sessionFetch(path, options, false);
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: response.statusText }));
