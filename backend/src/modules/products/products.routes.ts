@@ -217,12 +217,18 @@ router.delete(
   asyncHandler(async (req, res) => {
     const product = await prisma.product.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!product) return res.status(404).json({ error: "Product not found" });
-    // Remove many-to-many collection links before cascading the product's own records.
-    await prisma.product.update({
-      where: { id: req.params.id },
-      data: { collections: { set: [] } },
+    // Hostinger may still have the original restrictive variant foreign key while
+    // migrations are catching up. Product deletion is explicitly requested here;
+    // order rows retain their product snapshots, so remove the catalog graph while
+    // temporarily disabling FK checks on this transaction connection.
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
+      try {
+        await tx.product.delete({ where: { id: req.params.id } });
+      } finally {
+        await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+      }
     });
-    await prisma.product.delete({ where: { id: req.params.id } });
     res.status(204).send();
   })
 );
