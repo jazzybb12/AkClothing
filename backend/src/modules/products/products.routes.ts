@@ -265,6 +265,13 @@ router.post(
   requirePermission("PRODUCTS"),
   asyncHandler(async (req, res) => {
     const input = variantInputSchema.parse(req.body);
+    const duplicateSku = await prisma.productVariant.findUnique({ where: { sku: input.sku }, select: { id: true } });
+    if (duplicateSku) return res.status(409).json({ error: "That SKU is already in use. Enter a unique SKU for this variant." });
+    const duplicateCombination = await prisma.productVariant.findFirst({
+      where: { productId: req.params.id, size: input.size, color: input.color },
+      select: { id: true },
+    });
+    if (duplicateCombination) return res.status(409).json({ error: "This size and color combination already exists for the product." });
     const variant = await prisma.productVariant.create({
       data: {
         productId: req.params.id,
