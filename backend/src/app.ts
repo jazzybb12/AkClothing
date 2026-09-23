@@ -83,6 +83,10 @@ const accountUpdateLimiter = rateLimit({
 
 export function createApp() {
   const app = express();
+  // Hostinger routes public traffic through its reverse proxy. Trust only the
+  // nearest hop by default; override with verified proxy addresses if necessary.
+  const proxy = process.env.TRUST_PROXY ?? (env.nodeEnv === "production" ? "1" : "0");
+  app.set("trust proxy", /^\d+$/.test(proxy) ? Number(proxy) : proxy);
 
   app.use(helmet());
   app.use(cors({ origin: env.corsOrigin, credentials: true }));

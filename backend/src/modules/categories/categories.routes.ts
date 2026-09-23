@@ -1,3 +1,4 @@
+import { AppError } from "@/utils/AppError";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "@/config/prisma";
@@ -16,7 +17,7 @@ router.get(
 );
 
 const createSchema = z.object({
-  name: z.string().min(2),
+  name: z.string().trim().min(2),
   parentId: z.string().uuid().optional(),
 });
 
@@ -26,6 +27,9 @@ router.post(
   requirePermission("CATEGORIES"),
   asyncHandler(async (req, res) => {
     const input = createSchema.parse(req.body);
+    if (!slugify(input.name)) throw new AppError(400, "Category name must include a letter or number.");
+    const duplicate = await prisma.category.findFirst({ where: { OR: [{ name: input.name }, { slug: slugify(input.name) }] } });
+    if (duplicate) throw new AppError(409, "A category with this name already exists.");
     const category = await prisma.category.create({
       data: { name: input.name, slug: slugify(input.name), parentId: input.parentId },
     });
@@ -34,7 +38,7 @@ router.post(
 );
 
 const updateSchema = z.object({
-  name: z.string().min(2).optional(),
+  name: z.string().trim().min(2).optional(),
   parentId: z.string().uuid().nullable().optional(),
 });
 
@@ -44,6 +48,12 @@ router.patch(
   requirePermission("CATEGORIES"),
   asyncHandler(async (req, res) => {
     const input = updateSchema.parse(req.body);
+    if (input.name) {
+      if (!slugify(input.name)) throw new AppError(400, "Category name must include a letter or number.");
+      const duplicate = await prisma.category.findFirst({ where: { id: { not: req.params.id }, OR: [{ name: input.name }, { slug: slugify(input.name) }] } });
+      if (duplicate) throw new AppError(409, "A category with this name already exists.");
+    }
+    if (input.parentId === req.params.id) throw new AppError(400, "A category cannot be its own parent.");
     const category = await prisma.category.update({
       where: { id: req.params.id },
       data: {
@@ -60,6 +70,10 @@ router.delete(
   authenticate,
   requirePermission("CATEGORIES"),
   asyncHandler(async (req, res) => {
+    const category = await prisma.category.findUnique({ where: { id: req.params.id }, include: { _count: { select: { products: true, children: true } } } });
+    if (!category) throw new AppError(404, "Category not found.");
+    if (category._count.products) throw new AppError(409, "Move this category's products to another category before deleting it.");
+    if (category._count.children) throw new AppError(409, "Move or delete this category's subcategories before deleting it.");
     await prisma.category.delete({ where: { id: req.params.id } });
     res.status(204).send();
   })
