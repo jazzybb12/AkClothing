@@ -224,6 +224,7 @@ router.delete(
     await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
       try {
+        await tx.review.deleteMany({ where: { productId: req.params.id } });
         await tx.product.delete({ where: { id: req.params.id } });
       } finally {
         await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");

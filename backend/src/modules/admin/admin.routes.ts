@@ -241,6 +241,7 @@ router.get(
   requirePermission("REVIEWS"),
   asyncHandler(async (_req, res) => {
     const reviews = await prisma.review.findMany({
+      where: { product: {} },
       include: { user: { select: { name: true, email: true } }, product: { select: { name: true, slug: true } } },
       orderBy: { createdAt: "desc" },
     });

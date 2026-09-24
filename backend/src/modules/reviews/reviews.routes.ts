@@ -31,7 +31,7 @@ router.get(
   "/homepage",
   asyncHandler(async (_req, res) => {
     const curated = await prisma.review.findMany({
-      where: { showOnHomepage: true },
+      where: { showOnHomepage: true, product: {} },
       include: { user: { select: { name: true } }, product: { select: { name: true, slug: true } } },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -39,7 +39,7 @@ router.get(
     if (curated.length > 0) return res.json(curated);
 
     const fallback = await prisma.review.findMany({
-      where: { rating: { gte: 4 } },
+      where: { rating: { gte: 4 }, product: {} },
       include: { user: { select: { name: true } }, product: { select: { name: true, slug: true } } },
       orderBy: [{ rating: "desc" }, { createdAt: "desc" }],
       take: 20,
