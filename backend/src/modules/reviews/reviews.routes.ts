@@ -30,8 +30,11 @@ router.get(
 router.get(
   "/homepage",
   asyncHandler(async (_req, res) => {
+    const existingProducts = await prisma.product.findMany({ select: { id: true } });
+    const productIds = existingProducts.map((product) => product.id);
+    if (productIds.length === 0) return res.json([]);
     const curated = await prisma.review.findMany({
-      where: { showOnHomepage: true, product: {} },
+      where: { showOnHomepage: true, productId: { in: productIds } },
       include: { user: { select: { name: true } }, product: { select: { name: true, slug: true } } },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -39,7 +42,7 @@ router.get(
     if (curated.length > 0) return res.json(curated);
 
     const fallback = await prisma.review.findMany({
-      where: { rating: { gte: 4 }, product: {} },
+      where: { rating: { gte: 4 }, productId: { in: productIds } },
       include: { user: { select: { name: true } }, product: { select: { name: true, slug: true } } },
       orderBy: [{ rating: "desc" }, { createdAt: "desc" }],
       take: 20,
