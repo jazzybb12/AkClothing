@@ -37,13 +37,13 @@ export default function PopularCategories({ categories, eyebrow = "Browse", head
           <Link
             key={c.id}
             href={`/shop?category=${c.slug}`}
-            className={`group relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl p-4 text-center text-sm font-bold transition duration-300 hover:-translate-y-1 ${
-              TILE_TONES[((page - 1) * pageSize + i) % TILE_TONES.length]
-            }`}
+            className="group flex flex-col text-center text-sm font-bold transition duration-300 hover:-translate-y-1"
           >
-            {c.imageUrl && <img src={c.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-100 transition-transform duration-500 group-hover:scale-105" />}
-            {c.imageUrl && <div className="pointer-events-none absolute inset-0 bg-black/10" />}
-            <span className="relative opacity-75 drop-shadow transition-all duration-300 group-hover:scale-105 group-hover:opacity-100">{c.name}</span>
+            <span className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl ${TILE_TONES[((page - 1) * pageSize + i) % TILE_TONES.length]}`}>
+              {c.imageUrl && <img src={c.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-100 transition-transform duration-500 group-hover:scale-105" />}
+              {c.imageUrl && <span className="pointer-events-none absolute inset-0 bg-black/10" />}
+            </span>
+            <span className="mt-3 text-ink opacity-75 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100">{c.name}</span>
           </Link>
         ))}
       </div>
