@@ -27,13 +27,14 @@ export default async function OrderConfirmationPage({
   const order = await getOrder(params.orderNumber, phone);
 
   return (
-    <div className="mx-auto max-w-md py-8 text-center">
+    <main className="min-h-[70vh] bg-paper px-4 py-12"><div className="mx-auto max-w-3xl py-8 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400">
         <svg viewBox="0 0 24 24" className="h-8 w-8 fill-none stroke-current" strokeWidth="2.5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h1 className="mt-4 text-2xl font-bold text-ink">Order Placed!</h1>
+      <p className="mt-6 text-sm font-semibold uppercase tracking-[0.25em] text-brand">Thank you for shopping with us</p>
+      <h1 className="mt-2 font-display text-4xl font-bold text-ink">Your order is confirmed</h1>
       <p className="mt-2 text-ink-soft">
         Thank you — your order <span className="font-semibold text-brand">{params.orderNumber}</span> has been
         received
@@ -48,6 +49,10 @@ export default async function OrderConfirmationPage({
           · {order.shippingMethodName ?? "Shipping"} · Total Rs. {order.total}
         </p>
       )}
+      <div className="mx-auto mt-8 max-w-xl rounded-2xl border border-ink/10 bg-white/40 p-6 shadow-soft">
+        <p className="font-semibold text-ink">Order details</p>
+        {order && <div className="mt-4 grid grid-cols-2 gap-4 text-left text-sm"><div><p className="font-semibold">Delivery</p><p className="text-ink-soft">{order.shippingAddress.address}<br />{order.shippingAddress.city}</p></div><div><p className="font-semibold">Payment</p><p className="text-ink-soft">{order.paymentMethod === "COD" ? "Cash on delivery" : "Bank deposit"}<br />Total Rs. {order.total}</p></div></div>}
+      </div>
       <div className="mt-8 flex justify-center gap-3">
         <Link href={`/track?orderNumber=${params.orderNumber}&phone=${searchParams.phone ?? ""}`} className="rang-btn-primary">
           Track This Order
@@ -56,6 +61,6 @@ export default async function OrderConfirmationPage({
           Continue Shopping
         </Link>
       </div>
-    </div>
+    </div></main>
   );
 }
