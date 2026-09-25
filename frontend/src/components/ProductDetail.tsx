@@ -20,6 +20,7 @@ export default function ProductDetail({ product }: { product: Product }) {
   const [color, setColor] = useState(colors[0] ?? "");
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [infoTab, setInfoTab] = useState<"details" | "size">("details");
 
   const router = useRouter();
   const { addLine } = useCart();
@@ -104,8 +105,12 @@ export default function ProductDetail({ product }: { product: Product }) {
           </div>
         )}
         <p className="mt-2 text-xl font-semibold text-brand">Rs. {price}</p>
+        {variant?.sku && <p className="mt-1 text-xs uppercase tracking-wider text-ink-soft">SKU: {variant.sku}</p>}
         {lowStock && <p className="mt-1 text-sm font-medium text-orange-600">Only {variant?.stockQty} left in stock</p>}
-        <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-ink">{product.description}</p>
+        <div className="mt-6 border-y border-ink/15">
+          <div className="flex gap-6 text-sm font-semibold"><button type="button" onClick={() => setInfoTab("details")} className={`border-b-2 py-3 ${infoTab === "details" ? "border-brand text-brand" : "border-transparent text-ink-soft"}`}>Details</button><button type="button" onClick={() => setInfoTab("size")} className={`border-b-2 py-3 ${infoTab === "size" ? "border-brand text-brand" : "border-transparent text-ink-soft"}`}>Size guide</button></div>
+          {infoTab === "details" ? <p className="whitespace-pre-line py-4 text-sm leading-relaxed text-ink">{product.description}</p> : <div className="py-4 text-sm"><p className="mb-3 text-ink-soft">Available measurements are managed through this product&apos;s variants.</p><div className="grid grid-cols-3 gap-2 font-medium">{sizes.map((s) => <div key={s} className="rounded border border-ink/15 px-3 py-2 text-center">{s}</div>)}</div></div>}
+        </div>
 
         <div className="mt-6">
           <p className="mb-2 text-sm font-semibold">Size</p>
