@@ -98,6 +98,7 @@ export default function Header({ categories, logoUrl }: Props) {
               <Link href="/shop" onClick={() => setOpenDropdown(null)} className="block px-3 py-2 text-sm">View all categories ↗</Link>
             </div>}
           </div>
+          <Link href="/collections" className="border-b-2 border-transparent py-2 transition-colors hover:border-accent">Collections</Link>
           <Link href="/shop" className="border-b-2 border-transparent py-2 transition-colors hover:border-accent">Shop</Link>
           <Link href="/track" className="border-b-2 border-transparent py-2 transition-colors hover:border-accent">Track Order</Link>
 

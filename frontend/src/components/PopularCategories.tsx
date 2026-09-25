@@ -37,7 +37,7 @@ export default function PopularCategories({ categories, eyebrow = "Browse", head
           <Link
             key={c.id}
             href={`/shop?category=${c.slug}`}
-            className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl p-4 text-center text-sm font-bold transition duration-300 hover:-translate-y-1 ${
+            className={`group relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl p-4 text-center text-sm font-bold transition duration-300 hover:-translate-y-1 ${
               TILE_TONES[((page - 1) * pageSize + i) % TILE_TONES.length]
             }`}
           >
@@ -46,7 +46,7 @@ export default function PopularCategories({ categories, eyebrow = "Browse", head
               style={{ backgroundImage: "repeating-linear-gradient(60deg, currentColor 0 3px, transparent 3px 18px)" }}
             />
             {c.imageUrl && <img src={c.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45" />}
-            <span className="relative">{c.name}</span>
+            <span className="relative opacity-75 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100">{c.name}</span>
           </Link>
         ))}
       </div>
