@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAdminAuth } from "@/lib/AdminAuthContext";
 import { Category } from "@/lib/types";
+import { uploadImage } from "@/lib/cloudinary";
 
 export default function AdminCategoriesPage() {
   const { token } = useAdminAuth();
@@ -12,6 +13,8 @@ export default function AdminCategoriesPage() {
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -33,16 +36,20 @@ export default function AdminCategoriesPage() {
     if (!token) return;
     setError(null);
     try {
+      let imageUrl: string | undefined;
+      if (coverFile) { setUploading(true); imageUrl = await uploadImage(coverFile, token); }
       await apiFetch("/categories", {
         method: "POST",
         token,
-        body: JSON.stringify({ name, parentId: parentId || undefined }),
+        body: JSON.stringify({ name, parentId: parentId || undefined, imageUrl }),
       });
       setName("");
       setParentId("");
+      setCoverFile(null);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not create category");
+    } finally { setUploading(false);
     }
   }
 
@@ -110,8 +117,9 @@ export default function AdminCategoriesPage() {
           </select>
         </div>
         <button type="submit" className="rang-btn-primary">
-          Add Category
+          {uploading ? "Uploading..." : "Add Category"}
         </button>
+        <label className="text-sm"><span className="mb-1 block font-medium">Cover photo</span><input type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} /></label>
       </form>
 
       {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}

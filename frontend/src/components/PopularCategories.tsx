@@ -45,6 +45,7 @@ export default function PopularCategories({ categories, eyebrow = "Browse", head
               className="pointer-events-none absolute inset-0 opacity-[0.12]"
               style={{ backgroundImage: "repeating-linear-gradient(60deg, currentColor 0 3px, transparent 3px 18px)" }}
             />
+            {c.imageUrl && <img src={c.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45" />}
             <span className="relative">{c.name}</span>
           </Link>
         ))}

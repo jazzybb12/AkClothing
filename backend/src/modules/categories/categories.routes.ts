@@ -19,6 +19,7 @@ router.get(
 const createSchema = z.object({
   name: z.string().trim().min(2),
   parentId: z.string().uuid().optional(),
+  imageUrl: z.string().url().optional().nullable(),
 });
 
 router.post(
@@ -31,7 +32,7 @@ router.post(
     const duplicate = await prisma.category.findFirst({ where: { OR: [{ name: input.name }, { slug: slugify(input.name) }] } });
     if (duplicate) throw new AppError(409, "A category with this name already exists.");
     const category = await prisma.category.create({
-      data: { name: input.name, slug: slugify(input.name), parentId: input.parentId },
+      data: { name: input.name, slug: slugify(input.name), parentId: input.parentId, imageUrl: input.imageUrl },
     });
     res.status(201).json(category);
   })
@@ -40,6 +41,7 @@ router.post(
 const updateSchema = z.object({
   name: z.string().trim().min(2).optional(),
   parentId: z.string().uuid().nullable().optional(),
+  imageUrl: z.string().url().optional().nullable(),
 });
 
 router.patch(

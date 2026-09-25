@@ -19,6 +19,7 @@ export interface Category {
   name: string;
   slug: string;
   parentId: string | null;
+  imageUrl?: string | null;
 }
 
 export type BannerGradientKey = "brand" | "emerald" | "accent";
