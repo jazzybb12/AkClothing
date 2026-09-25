@@ -80,7 +80,7 @@ export default function Header({ categories, logoUrl }: Props) {
     <header className="font-rang sticky top-0 z-40 border-b-[3px] border-ink bg-paper">
       <Announcement />
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-4">
-        <Link href="/" className="flex items-center gap-1.5 font-display text-2xl font-bold tracking-tight text-ink transition hover:opacity-80">
+        <Link href="/" aria-label="Go to homepage" title="Go to homepage" className="flex items-center gap-1.5 font-display text-2xl font-bold tracking-tight text-ink transition hover:opacity-80">
           {logoUrl ? (
             <Image src={logoUrl} alt="ak.shop" width={68} height={68} className="rounded object-contain" />
           ) : (
