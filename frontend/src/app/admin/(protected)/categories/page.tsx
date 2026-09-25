@@ -15,6 +15,19 @@ export default function AdminCategoriesPage() {
   const [error, setError] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  async function handleCoverUpload(id: string, file: File) {
+    if (!token) return;
+    setError(null); setUploadingId(id);
+    try {
+      const imageUrl = await uploadImage(file, token);
+      await apiFetch(`/categories/${id}`, { method: "PATCH", token, body: JSON.stringify({ imageUrl }) });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not upload category cover photo");
+    } finally { setUploadingId(null); }
+  }
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -138,7 +151,11 @@ export default function AdminCategoriesPage() {
                     className="rang-input flex-1 py-1 font-semibold"
                   />
                 ) : (
-                  <Link href={`/admin/categories/${p.id}`} className="font-semibold hover:underline">{p.name} <span className="ml-2 text-xs font-normal text-ink-soft">View products →</span></Link>
+                  <div className="flex items-center gap-3">
+                    {p.imageUrl ? <img src={p.imageUrl} alt="" className="h-12 w-16 rounded object-cover" /> : <span className="h-12 w-16 rounded bg-ink/5" />}
+                    <Link href={`/admin/categories/${p.id}`} className="font-semibold hover:underline">{p.name} <span className="ml-2 text-xs font-normal text-ink-soft">View products →</span></Link>
+                    <label className="cursor-pointer text-xs text-brand hover:underline">{uploadingId === p.id ? "Uploading..." : "Cover photo"}<input type="file" accept="image/*" className="hidden" disabled={uploadingId === p.id} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCoverUpload(p.id, file); }} /></label>
+                  </div>
                 )}
                 <div className="flex shrink-0 gap-3">
                   {editingId === p.id ? (
@@ -185,7 +202,11 @@ export default function AdminCategoriesPage() {
                           </select>
                         </div>
                       ) : (
-                        <Link href={`/admin/categories/${c.id}`} className="hover:underline">— {c.name} · View products →</Link>
+                        <div className="flex items-center gap-3">
+                          {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-10 w-14 rounded object-cover" /> : <span className="h-10 w-14 rounded bg-ink/5" />}
+                          <Link href={`/admin/categories/${c.id}`} className="hover:underline">— {c.name} · View products →</Link>
+                          <label className="cursor-pointer text-xs text-brand hover:underline">{uploadingId === c.id ? "Uploading..." : "Cover photo"}<input type="file" accept="image/*" className="hidden" disabled={uploadingId === c.id} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCoverUpload(c.id, file); }} /></label>
+                        </div>
                       )}
                       <div className="flex shrink-0 gap-3">
                         {editingId === c.id ? (
