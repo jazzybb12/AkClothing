@@ -69,20 +69,16 @@ export default function ProductDetail({ product }: { product: Product }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
-      <div>
-        <div className="rang-card relative aspect-[3/4] w-full overflow-hidden">
-          {image ? (
-            <Image
-              src={image}
-              alt={product.images[activeImage]?.altText ?? product.name}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-ink-soft">No image</div>
-          )}
-          <button
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:gap-12">
+      <div className="relative grid grid-cols-2 gap-2 self-start">
+        {product.images.length > 0 ? product.images.map((img, i) => (
+          <button key={img.id} type="button" onClick={() => setActiveImage(i)} className={`rang-card relative aspect-[3/4] overflow-hidden text-left ${i === activeImage ? "ring-2 ring-brand ring-offset-2" : ""}`}>
+            <Image src={img.url} alt={img.altText ?? product.name} fill className="object-cover transition-transform duration-500 hover:scale-105" />
+          </button>
+        )) : (
+          <div className="rang-card col-span-2 flex aspect-[3/4] items-center justify-center text-ink-soft">No image</div>
+        )}
+        <button
             aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
             onClick={() => toggle(product.slug)}
             className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm transition hover:scale-110 hover:bg-white"
@@ -94,26 +90,10 @@ export default function ProductDetail({ product }: { product: Product }) {
             >
               <path d="M12 21s-6.7-4.35-9.3-8.3C1 10 1.6 6.5 4.6 5.1 7 4 9.5 4.8 12 7.5c2.5-2.7 5-3.5 7.4-2.4 3 1.4 3.6 4.9 1.9 7.6C18.7 16.65 12 21 12 21z" />
             </svg>
-          </button>
-        </div>
-        {product.images.length > 1 && (
-          <div className="mt-3 flex gap-2">
-            {product.images.map((img, i) => (
-              <button
-                key={img.id}
-                onClick={() => setActiveImage(i)}
-                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition ${
-                  i === activeImage ? "border-brand" : "border-transparent opacity-70 hover:opacity-100"
-                }`}
-              >
-                <Image src={img.url} alt={img.altText ?? `${product.name} ${i + 1}`} fill className="object-cover" />
-              </button>
-            ))}
-          </div>
-        )}
+        </button>
       </div>
 
-      <div>
+      <div className="self-start lg:sticky lg:top-24">
         <h1 className="text-2xl font-bold sm:text-3xl">{product.name}</h1>
         {product.reviewCount > 0 && (
           <div className="mt-1.5 flex items-center gap-2">
@@ -197,7 +177,7 @@ export default function ProductDetail({ product }: { product: Product }) {
           </a>
         )}
       </div>
-      <div className="md:col-span-2">
+      <div className="lg:col-span-2">
         <ReviewsSection productId={product.id} />
       </div>
     </div>
