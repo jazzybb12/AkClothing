@@ -21,7 +21,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setLines(readCart());
+    // Discard cart entries from older deployments or deleted variants. Sending
+    // those IDs to checkout causes the API's UUID validation to reject the order.
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    setLines(readCart().filter((line) => uuid.test(line.variantId) && line.qty > 0));
     setHydrated(true);
   }, []);
 
