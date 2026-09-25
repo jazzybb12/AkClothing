@@ -26,6 +26,16 @@ function restoreEngineExecutePermissions() {
 }
 restoreEngineExecutePermissions();
 
+async function ensureCategoryCoverColumn() {
+  try {
+    const { prisma } = await import("@/config/prisma");
+    await prisma.$executeRawUnsafe("ALTER TABLE `Category` ADD COLUMN `imageUrl` VARCHAR(191) NULL");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/duplicate column|already exists/i.test(message)) console.error("Category cover column check failed:", message);
+  }
+}
+
 // Migrations are applied out-of-band (run `npx prisma migrate deploy` against the
 // production DATABASE_URL from a local machine or CI whenever the schema changes) rather
 // than at app boot. Hostinger's Node.js hosting both (a) expects listen() within a few
@@ -35,7 +45,9 @@ restoreEngineExecutePermissions();
 // below runs in-process (no subprocess spawn), so it isn't affected by that limitation.
 const app = createApp();
 
-app.listen(env.port, () => {
-  console.log(`Backend API listening on http://localhost:${env.port}`);
-  cleanupDemoData().catch((error) => console.error("Demo data cleanup failed:", error));
+ensureCategoryCoverColumn().finally(() => {
+  app.listen(env.port, () => {
+    console.log(`Backend API listening on http://localhost:${env.port}`);
+    cleanupDemoData().catch((error) => console.error("Demo data cleanup failed:", error));
+  });
 });
