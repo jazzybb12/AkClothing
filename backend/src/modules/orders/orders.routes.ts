@@ -16,7 +16,9 @@ const checkoutSchema = z.object({
   shippingAddress: z.object({ address: z.string().min(3), city: z.string().min(2) }),
   items: z.array(z.object({ variantId: z.string().uuid(), qty: z.number().int().positive() })).min(1),
   couponCode: z.string().optional(),
-  shippingMethodId: z.string().uuid().optional(),
+  // Accept legacy/non-UUID shipping method identifiers from older Hostinger
+  // seed data; the service still verifies that the selected method is active.
+  shippingMethodId: z.string().min(1).optional(),
   paymentMethod: z.enum(["COD", "BANK_DEPOSIT"]).default("COD"),
 });
 
