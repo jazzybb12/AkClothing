@@ -14,8 +14,8 @@ export default function HeroCarousel({banners, showFallback = false}: {banners:B
    {slide.imageUrl?<Image src={slide.imageUrl} alt="" fill priority sizes="(max-width: 760px) 100vw, 50vw" style={{objectFit:"cover",objectPosition:`${slide.imagePosition??50}% center`,transform:`perspective(900px) rotateY(${slide.imageRotation??0}deg) scale(${slide.imageRotation?1.2:1})`}}/>:<><div className="dune-orb"/><Image src="/concepts/dune-garment.svg" alt="Illustrated everyday shirt" fill priority className="dune-garment" style={{objectFit:"contain",transform:`perspective(900px) rotateY(${slide.imageRotation??-12}deg) rotate(-7deg)`}}/><span className="dune-art-label">FORM / FABRIC / FEELING</span></>}
   </div>
   <div className="dune-hero-copy"><p className="rang-section-tag">{slide.eyebrow}</p><h1>{slide.heading}</h1>{slide.subtext&&<p className="dune-description">{slide.subtext}</p>}{slide.ctaLabel&&slide.ctaHref&&<Link className="rang-btn-primary" href={slide.ctaHref}>{slide.ctaLabel}<span aria-hidden="true"> ↗</span></Link>}
-   <div className="dune-edition">AK.SHOP <span>TEXTURE &amp; TRADITION</span></div>
    {slides.length>1&&<div className="dune-slide-controls">{slides.map((b,i)=><button key={b.id} aria-label={`Show banner ${i+1}`} aria-pressed={active%slides.length===i} onClick={()=>setActive(i)}>{String(i+1).padStart(2,"0")}</button>)}</div>}
   </div>
  </section>;
 }
+

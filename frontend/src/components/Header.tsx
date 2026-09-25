@@ -92,7 +92,7 @@ export default function Header({ categories, logoUrl }: Props) {
 
         <div ref={navRef} className="hidden items-center gap-5 whitespace-nowrap text-xs font-medium text-ink lg:flex">
           <div className="relative">
-            <button className="py-2" aria-expanded={openDropdown === 'catalog'} onClick={() => setOpenDropdown(openDropdown === 'catalog' ? null : 'catalog')}>Collections <span aria-hidden="true">⌄</span></button>
+            <button className="inline-flex items-center gap-1 py-2" aria-expanded={openDropdown === 'catalog'} onClick={() => setOpenDropdown(openDropdown === 'catalog' ? null : 'catalog')}>Collections <span aria-hidden="true" className="relative top-px text-[10px] leading-none">&#8964;</span></button>
             {openDropdown === 'catalog' && <div className="rang-card absolute left-0 top-full z-10 max-h-96 min-w-56 overflow-y-auto p-2">
               {parents.map(parent => <Link key={parent.id} href={`/shop?category=${parent.slug}`} onClick={() => setOpenDropdown(null)} className="block rounded px-3 py-2 text-sm font-normal hover:bg-ink/5">{parent.name}</Link>)}
               <Link href="/shop" onClick={() => setOpenDropdown(null)} className="block px-3 py-2 text-sm">View all collections ↗</Link>
@@ -268,3 +268,4 @@ export default function Header({ categories, logoUrl }: Props) {
     </header>
   );
 }
+
