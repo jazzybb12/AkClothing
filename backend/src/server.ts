@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { createApp } from "@/app";
 import { env } from "@/config/env";
+import { cleanupDemoData } from "@/utils/cleanupDemoData";
 
 // Some hosts (Hostinger's deploy packaging included) copy node_modules into the final
 // runtime location without preserving the executable bit on Prisma's native engine
@@ -36,4 +37,5 @@ const app = createApp();
 
 app.listen(env.port, () => {
   console.log(`Backend API listening on http://localhost:${env.port}`);
+  cleanupDemoData().catch((error) => console.error("Demo data cleanup failed:", error));
 });
