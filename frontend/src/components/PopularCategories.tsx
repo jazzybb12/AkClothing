@@ -41,12 +41,9 @@ export default function PopularCategories({ categories, eyebrow = "Browse", head
               TILE_TONES[((page - 1) * pageSize + i) % TILE_TONES.length]
             }`}
           >
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.12]"
-              style={{ backgroundImage: "repeating-linear-gradient(60deg, currentColor 0 3px, transparent 3px 18px)" }}
-            />
-            {c.imageUrl && <img src={c.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45" />}
-            <span className="relative opacity-75 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100">{c.name}</span>
+            {c.imageUrl && <img src={c.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-100 transition-transform duration-500 group-hover:scale-105" />}
+            {c.imageUrl && <div className="pointer-events-none absolute inset-0 bg-black/10" />}
+            <span className="relative opacity-75 drop-shadow transition-all duration-300 group-hover:scale-105 group-hover:opacity-100">{c.name}</span>
           </Link>
         ))}
       </div>
